@@ -1,0 +1,6 @@
+{
+  "jdk": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.13%2B9/OpenJDK21U-jdk_x64_windows_hotspot_21.0.13_9.zip",
+  "jdk_sha256": "a4dbaa05fca4bd89d84584e58c459bd732efebb1722af80ab13c6516832004f9",
+  "platforms;android-35": "https://dl.google.com/android/repository/platform-35_r02.zip",
+  "build-tools;35.0.0": "https://dl.google.com/android/repository/build-tools_r35_windows.zip"
+}
