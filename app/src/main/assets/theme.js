@@ -5,8 +5,8 @@
  if(typeof module==='object'&&module.exports){module.exports={resolve,modes};return;}
  let config={};try{if(root.Android)config=JSON.parse(root.Android.config());}catch{}
  const media=root.matchMedia('(prefers-color-scheme: dark)');
- let saved='system';try{saved=localStorage.getItem('maqriTheme')||'system';}catch{}
- let mode=modes.includes(config.theme)?config.theme:modes.includes(saved)?saved:'system';
+ let saved='dark';try{saved=localStorage.getItem('maqriTheme')||'dark';}catch{}
+ let mode=modes.includes(config.theme)?config.theme:modes.includes(saved)?saved:'dark';
  function systemDark(){return root.Android&&typeof config.systemDark==='boolean'?config.systemDark:media.matches;}
  function set(value){
   if(!modes.includes(value))return;
@@ -15,7 +15,7 @@
   document.documentElement.style.colorScheme=dark?'dark':'light';
   try{localStorage.setItem('maqriTheme',mode);}catch{}
   try{if(root.Android)root.Android.theme(mode,dark);}catch{}
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content',dark?'#071e27':'#f5f8fa');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content',dark?'#0c100b':'#f3f6ef');
   root.dispatchEvent(new CustomEvent('maqriThemeChange',{detail:{mode,dark}}));
  }
  root.MaqriTheme={set,get mode(){return mode;},get dark(){return resolve(mode,systemDark());}};

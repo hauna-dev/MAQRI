@@ -1,0 +1,10 @@
+.signing/
+build/
+output/
+__pycache__/
+*.pyc
+tools/jdk/
+tools/platform/
+tools/build-tools/
+tools/*.zip
+

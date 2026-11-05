@@ -22,18 +22,34 @@ Build menghasilkan APK bertanda tangan serta `output/update.json` yang berisi ve
 
 ## Build dan rilis otomatis melalui Actions
 
-Workflow `.github/workflows/release.yml` sudah disiapkan. Pada Settings → Secrets and variables → Actions, tambahkan:
+Workflow lokal tersedia pada `.github/workflows/release.yml`. Workflow ini baru aktif setelah file workflow dan kode sumber terbaru diunggah ke repository GitHub; menyiapkannya di komputer saja belum mengaktifkan Actions.
 
-- `ANDROID_KEYSTORE_BASE64`: isi kunci yang sama, dikodekan Base64.
+Pengaturan satu kali di GitHub Settings → Secrets and variables → Actions:
+
+- `ANDROID_KEYSTORE_BASE64`: isi `.signing/murojaah.jks` dikodekan Base64. Gunakan kunci yang sama dengan aplikasi yang sudah terpasang pada pengguna.
 - `ANDROID_KEYSTORE_PASSWORD`: kata sandi dari `.signing/password.txt`.
 
-Untuk menyalin Base64 ke clipboard dari folder proyek di komputer pemilik kunci:
+Jangan unggah folder `.signing` ke repository atau lampiran Release. `.gitignore` sudah mengecualikan kunci, output, build, dan SDK lokal. Repository harus publik agar pemeriksa update aplikasi dapat membaca Release tanpa token.
+
+Sesudah konfigurasi satu kali:
+
+1. Selesaikan perubahan aplikasi dan naikkan versionName/versionCode pada manifest.
+2. Push kode termasuk perubahan manifest ke branch `main`.
+3. Actions menjalankan tes, membangun APK dengan kunci yang disimpan sebagai secret, memverifikasi APK/update.json, lalu menerbitkan Release Latest dengan kedua berkas tersebut.
+
+Tag `vX.Y.Z` yang di-push juga dapat memicu workflow; nama tag harus cocok dengan manifest. Workflow dapat dijalankan manual melalui Actions → Build and publish MAQRI → Run workflow. Versi yang sudah diterbitkan dilewati, sehingga berkas rilis lama tidak ditimpa. Build/publikasi gagal jika secrets belum disetel; workflow tidak membuat kunci pengganti.
+
+## Publikasi langsung dari komputer
+
+`python publish_release.py` hanya memeriksa kecocokan APK, versi, ukuran, SHA-256, ZIP dan konfigurasi updater; tidak menerbitkan apa pun.
+
+Untuk publikasi langsung diperlukan GitHub CLI dan login ke akun yang memiliki izin tulis repository. Setelah kode versi tersebut sudah di-push, jalankan:
 
 ```powershell
-[Convert]::ToBase64String([IO.File]::ReadAllBytes((Resolve-Path '.signing/murojaah.jks'))) | Set-Clipboard
+python publish_release.py --publish --target SHA_COMMIT_VERSI_INI
 ```
 
-Tempel hanya ke kolom secret. Jangan masukkan ke kode, issue, atau chat. Setelah kode dan secrets tersedia, push tag versi yang cocok dengan manifest. Workflow membangun, menguji, dan menerbitkan APK beserta update.json. Menjalankan workflow manual hanya menghasilkan artifact unduhan; publikasi Release dilakukan oleh pemicu tag. Jika rilis sudah dibuat manual, jangan memicu ulang tag yang sama.
+Skrip mengunggah APK dan update.json sebagai satu Release Latest, dan menolak menimpa tag yang sudah dirilis. Simpan identitas pengembang/kunci yang sama agar pengguna dapat memperbarui tanpa kehilangan data.
 
 ## Perilaku di ponsel
 

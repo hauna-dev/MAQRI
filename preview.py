@@ -8,7 +8,7 @@ from urllib.parse import urlparse, parse_qs
 
 ROOT=Path(__file__).resolve().parent
 sys.path.insert(0,str(ROOT.parent))
-from tafsir_saadi import fetch_verse
+from tafsir_indonesia import fetch_verse, fetch_indonesian_range
 
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self,*args,**kwargs):super().__init__(*args,directory=str(ROOT/'app/src/main/assets'),**kwargs)
@@ -20,8 +20,10 @@ class Handler(SimpleHTTPRequestHandler):
             surahs=json.loads((ROOT/'app/src/main/assets/surahs.json').read_text(encoding='utf-8'))
             if not 1<=s<=114 or not 1<=a<=b<=surahs[s-1]['verses_count'] or b-a+1>100:raise ValueError('Rentang tidak valid')
             deadline=time.monotonic()+100
-            rows=[{'verse':v,'text':fetch_verse(s,v,deadline),'url':f'https://tafsir.app/saadi/{s}/{v}'} for v in range(a,b+1)]
-            data=json.dumps({'surah':s,'first':a,'last':b,'verses':rows}).encode()
+            language=q.get('lang',['ar'])[0]
+            if language not in ('ar','id'):raise ValueError('Bahasa tidak valid')
+            rows=fetch_indonesian_range(s,a,b) if language=='id' else [{'verse':v,'text':fetch_verse(s,v,deadline),'url':f'https://tafsir.app/saadi/{s}/{v}'} for v in range(a,b+1)]
+            data=json.dumps({'language':language,'surah':s,'first':a,'last':b,'verses':rows}).encode()
             self.send_response(200);self.send_header('Content-Type','application/json');self.end_headers();self.wfile.write(data)
         except Exception:
             self.send_error(502,'Tafsir source unavailable')

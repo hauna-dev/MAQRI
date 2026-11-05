@@ -1,6 +1,6 @@
-# MAQRI — Mushaf, Audio, Qur’an Riyadhussholihiin
+# MAQRI — Mushaf, Audio, dan Al-Qur’an Interaktif
 
-Dikembangkan oleh Tim IT Ponpes Riyadhussholihiin.
+Dikembangkan oleh Hauna.
 
 APK: `output/MAQRI-1.0.10.apk`. Membutuhkan Android 8.0 atau lebih baru dan Android System WebView yang aktif. Aplikasi berjalan mandiri di ponsel; komputer serta bot Telegram/WhatsApp tidak diperlukan.
 
@@ -17,6 +17,30 @@ APK: `output/MAQRI-1.0.10.apk`. Membutuhkan Android 8.0 atau lebih baru dan Andr
 - **Mushaf:** masukkan halaman 1–604. Gambar Mushaf Madinah Hafs 1441 H dimuat online; gunakan tombol tambah/kurang untuk zoom. Aplikasi tidak membundel gambar mushaf.
 - **Tafsir:** masukkan misalnya `1:1-7` atau `2:255`. Teks Arab As-Sa’di diambil langsung dari tafsir.app. Ayat tanpa teks tersendiri diberi keterangan. Tafsir yang pernah dibuka disimpan lokal untuk mempercepat pembacaan berikutnya.
 - **Latar belakang:** pemutar memakai service Android dan notifikasi media. Tombol jeda, ayat sebelumnya/berikutnya, dan hentikan tersedia. Sistem dapat membatasi aplikasi karena penghematan baterai pada sebagian merek ponsel.
+
+## Tafsir As-Sa’di edisi Indonesia
+
+Di tab **Tafsir**, menu **Tafsir Indonesia** dan **Tafsir Arab** tersedia di atas formulir teks per ayat. Edisi Indonesia menjadi pilihan awal; pilihan bahasa disimpan. Pilih Ayat Kursi, Al-Fatihah, Al-Ikhlas, atau ketik rentang seperti `2:255`, lalu ketuk **Baca tafsir**. Teks Indonesia bersumber dari [Saadi.IslamEnc.com](https://saadi.islamenc.com/id/browse/tafsir/saadi), ditampilkan dari sumber aslinya dengan atribusi dan tautan ke ayat terkait. Audio tafsir tetap berbahasa Arab.
+
+Android mengambil satu halaman surat, memisahkan teks Indonesia dari bagian Arab pembanding, dan menyimpan halaman di folder internal `tafsir-id`. Surat yang telah dibaca tersedia kembali tanpa internet. Penjelasan yang sumbernya menggabungkan beberapa ayat ditampilkan sekali dengan rentang dan keterangan; ayat tanpa penjelasan tersendiri tidak diisi dengan teks ayat lain. Untuk membuka surat lain pertama kali diperlukan internet. Teks Arab dari tafsir.app tetap mempunyai cache terpisah.
+
+Verifikasi: `node tests/tafsir_indonesia.cjs` memeriksa pilihan bahasa, sumber, tampilan dan respons kedaluwarsa. Parser Java diuji dengan halaman Al-Fatihah, Al-Baqarah (286 anchor ayat), dan Al-Ikhlas. Emulator Android 15 berhasil menampilkan Ayat Kursi edisi Indonesia, membukanya kembali dalam mode pesawat, menampilkan satu penjelasan gabungan untuk 2:8–9, dan beralih ke edisi Arab lalu kembali. Preview browser mendukung kedua sumber melalui `preview.py` tanpa modul dari folder induk.
+
+## Audio Tafsir As-Sa’di
+
+Di tab **Tafsir**, pilih surat pada kartu **Audio Tafsir As-Sa’di**, lalu ketuk **Putar audio tafsir**. Tersedia 114 surat berbahasa Arab, pembacaan Abdulrahman Al-Subhan, dari [Way2Quran](https://way2quran.com/id/tafsir/series/saadi-tafsir-subhan-reading). Audio merupakan pembacaan kitab As-Sa’di, bukan rekaman suara beliau sendiri. Daftar sumber/durasi: `app/src/main/assets/tafsir-audio.json`.
+
+Audio diputar streaming langsung melalui HTTPS, tanpa mengunduh seluruh surat terlebih dahulu. Memerlukan internet dan belum disediakan sebagai unduhan offline. Android menggunakan service pemutar/notifikasi yang sama dengan murottal: jeda, lanjut, seek, surat sebelumnya/berikutnya, dan berhenti. Posisi per surat disimpan berkala serta saat jeda/berhenti agar bisa dilanjutkan. Tidak tersedia sinkronisasi atau penanda waktu per ayat; tombol mushaf membuka halaman ayat pertama surat. Teks tafsir per ayat tetap tersedia di bawah kartu audio.
+
+Verifikasi: `node tests/tafsir_audio.cjs`; daftar lengkap 114 URL diperiksa dari halaman sumber, dan permintaan byte-range MP3 surat 1, 2, 114 berhasil (HTTP 206). Emulator Android 15 berhasil memutar Al-Fatihah, jeda/seek, melanjutkan dari sekitar 2:40, berjalan di latar belakang, dan berpindah ke Al-Baqarah lalu kembali. Tidak ada error AndroidRuntime/MediaPlayer pada pengujian ini. APK dibangun dan dipasang kembali di emulator.
+
+## Rekam dan cek hafalan
+
+Pada tab **Murojaah**, pilih surat dan ayat awal/akhir, lalu ketuk **Mulai rekam hafalan**. Izinkan mikrofon saat diminta. Ketuk **Hentikan dan simpan**, lalu **Buka rekaman di Mushaf**. Pada tab Mushaf, pilih rekaman dan ketuk **Putar rekaman** untuk membuka halaman ayat awal sambil mendengarkan. Tersedia jeda/lanjut dan penggeser posisi audio. Pengecekan bacaan dilakukan sendiri dengan mengikuti mushaf.
+
+Rekaman AAC/M4A disimpan di penyimpanan internal aplikasi, terpisah dari audio qari, lengkap dengan surat, rentang ayat, waktu dan durasi. Rekaman tidak diunggah. Tetap buka aplikasi saat merekam; berpindah ke aplikasi lain atau mengunci layar akan menghentikan dan menyimpan rekaman. Layar dijaga menyala selama perekaman, maksimal 30 menit. Menghapus data aplikasi atau mencopotnya menghapus rekaman. Perekaman tersedia di aplikasi Android; gambar mushaf tetap membutuhkan internet.
+
+Verifikasi fitur: `node tests/hafalan.cjs` memeriksa alur rekam/simpan, pemutaran dan seek, halaman ayat awal, pemulihan setelah penolakan izin, serta pencegahan audio bersamaan. Seluruh sumber Java berhasil dikompilasi terhadap Android API 35. Alur native diuji pada emulator Android 15: izin mikrofon ditolak/diizinkan, rekam/simpan, putar/jeda/seek, mushaf, persistensi setelah restart/pembaruan APK, dan simpan otomatis saat Home ditekan. Pemutar dibuat mengambang saat membaca mushaf dan inset status bar Android 15 diperbaiki. Kualitas suara mikrofon fisik masih perlu diuji di HP. Laporan pengujian: output/emulator-qa/RESULTS.md.
 
 ## Mengapa APK kecil
 
@@ -57,7 +81,7 @@ Pembaruan 1.0.2: nama aplikasi menjadi RIMA (Riyadh Murojaah), dengan identitas 
 
 Pembaruan 1.0.3: logo monogram R dan buku terbuka dipasang pada ikon Android dan beranda. Master logo di branding/rima-logo.png; prompt imagegen di branding/PROMPT.txt.
 
-Pembaruan 1.0.4: nama menjadi MAQRI, singkatan Mushaf, Audio, Qur’an Riyadhussholihiin. Identitas pengembang: Tim IT Ponpes Riyadhussholihiin. Ikon memakai simbol buku terbuka. ID paket serta kunci tanda tangan dipertahankan untuk pembaruan instalasi sebelumnya.
+Pembaruan 1.0.4: nama menjadi MAQRI, singkatan Mushaf, Audio, dan Al-Qur’an Interaktif. Identitas pengembang: Hauna. Ikon memakai simbol buku terbuka. ID paket serta kunci tanda tangan dipertahankan untuk pembaruan instalasi sebelumnya.
 
 Pembaruan 1.0.5: ikon dan beranda memakai logo MAQRI, monogram M dengan buku terbuka dan penanda emas. Master: branding/maqri-logo.png.
 
@@ -72,3 +96,55 @@ Pembaruan 1.0.9: Al-Minshawi Murattal menjadi qari default. Audio tetap berjalan
 ## Pembaruan aplikasi
 
 Konfigurasi pembaruan memakai hauna-dev/MAQRI. APK baru diunduh otomatis dan pemasangan tetap dikonfirmasi melalui Android. Ikuti [panduan rilis](PANDUAN_RILIS.md) untuk menerbitkan APK dan update.json, atau mengaktifkan workflow rilis otomatis. Jalankan `python test_updates.py` untuk memeriksa kebijakan sumber dan kecocokan metadata APK.
+
+
+## Pembaruan 1.0.13 — kontrol membaca dan rekaman
+
+- Mushaf: tombol layar penuh di toolbar menyembunyikan header, menu bawah, serta system bar Android. Tombol halaman dan zoom gambar tetap tersedia. Keluar dengan tombol × atau Back Android. Pemutar hafalan tetap dapat digunakan di layar penuh.
+- Rekaman: pada kartu Cek hafalan sendiri, pilih rekaman lalu Hapus rekaman ini. Dialog Android menyediakan Batal/Hapus. Hanya rekaman yang dipilih yang dihapus; pemutar dihentikan jika rekaman tersebut sedang diputar.
+- Tafsir: tombol Sebelumnya/Berikutnya membuka satu ayat sebelum/sesudah rentang yang sedang ditampilkan, termasuk berpindah surat. Untuk penjelasan gabungan Indonesia, navigasi melewati kelompok ayat tersebut. Navigasi berhenti pada awal/akhir Al-Qur’an.
+- Font tafsir: A−, A+, dan Reset tersedia pada toolbar yang tetap terlihat saat teks digulir. Ukuran Indonesia (12–27 px) dan Arab (18–40 px) disimpan terpisah.
+
+Versi APK: 1.0.13, versionCode 14. Unggah output/MAQRI-1.0.13.apk dan output/update.json dari build yang sama ke Release v1.0.13. Tetap gunakan kunci penandatanganan yang sama.
+
+Tes tambahan: node tests/reading_controls.cjs; tes rekaman juga mencakup permintaan hapus dan keadaan daftar kosong. Di emulator Android 15 diuji layar penuh/Back, batal dan hapus rekaman uji, navigasi 2:255 → 2:256 → 2:255, serta ukuran teks Indonesia dan Arab.
+
+
+## Pembaruan 1.0.14 — membaca lebih cepat
+
+Mushaf langsung menampilkan halaman terakhir beserta navigasi/zoom/layar penuh. Pengelolaan rekaman dipindahkan ke panel Rekaman hafalan yang dapat dibuka dari tombol di atas mushaf. Panel bisa ditutup melalui ×, Back, atau ketukan di luar panel. Bila belum ada rekaman, tombol Mulai rekam hafalan membawa pengguna ke perekam Murojaah. Saat memutar rekaman, panel menutup dan pemutar mengambang tetap tersedia sambil membaca.
+
+Tab Tafsir membuka mode Baca, dengan pilihan Indonesia/Arab dan formulir ayat langsung terlihat. Mode Dengar menampilkan pilihan surat dan pemutar audio secara terpisah. Perpindahan mode tidak menghentikan audio yang sedang diputar. Navigasi ayat dan ukuran teks tetap tersedia di mode Baca.
+
+APK: output/MAQRI-1.0.14.apk, versionCode 15. Gunakan update.json dari build yang sama untuk rilis v1.0.14.
+
+
+## Pembaruan 1.0.15 — Mushaf offline otomatis
+
+Mulai versi ini, setiap halaman mushaf yang berhasil dibuka akan otomatis disimpan ke penyimpanan internal aplikasi, terpisah dari cache HTTP WebView. Setelah penanda Bisa dibaca offline muncul, halaman dapat dibuka tanpa internet, termasuk setelah aplikasi ditutup/dibuka ulang. Halaman yang pernah dibuka di versi sebelumnya perlu dibuka kembali sekali saat online untuk masuk penyimpanan ini.
+
+Tab Unduhan menyediakan kartu Mushaf Offline: jumlah halaman, ukuran penyimpanan, dan pilihan membuka halaman tersimpan. Hanya halaman yang tersimpan yang tersedia offline; belum mengunduh seluruh 604 halaman secara otomatis. Menghapus audio MP3 tidak menghapus mushaf. Menghapus data aplikasi atau mencopotnya menghapus halaman tersimpan.
+
+Sumber gambar tetap edisi Madani Hafs 1441 v1 dari Adhan. Gambar diperiksa sebelum disimpan dan ditulis melalui berkas sementara agar unduhan gagal tidak dianggap tersimpan. Bila ruang penyimpanan penuh, gambar online masih dapat dibaca tetapi status menjelaskan bahwa halaman belum tersimpan. Preview browser tidak menyediakan penyimpanan offline Android ini.
+
+Verifikasi: emulator Android 15 membuka halaman 282 online, lalu mode pesawat diaktifkan, Wi-Fi/data dimatikan, aplikasi dihentikan dan dibuka ulang. Halaman tetap tampil dan tercatat sebagai 1 halaman (~0.2 MB) di daftar offline. Konektivitas dikembalikan setelah pengujian. Tes tambahan: node tests/mushaf_cache.cjs dan Java MushafCachePolicyTest; test_updates.py memverifikasi kecocokan APK/update.json.
+
+Rilis: output/MAQRI-1.0.15.apk dan output/update.json, versionCode 16.
+
+
+## Pembaruan 1.0.16 — ulang per ayat
+
+Pada tab Murojaah, pilih Ulang per ayat (1, 2, 3, 5, 10, 20 atau 99 kali) sebelum memutar. Setiap ayat diselesaikan sebanyak pilihan tersebut sebelum maju. Contoh ayat 1–3, ulang per ayat 3 kali: 1,1,1 → 2,2,2 → 3,3,3. Ulang rentang tetap terpisah; bila dipilih 3 kali, seluruh urutan tersebut diulang tiga putaran.
+
+Pilihan per ayat disimpan dan dicatat pada rentang terakhir. Pemutar dan notifikasi menampilkan hitungan ulang ayat serta putaran rentang. Tombol ayat berikutnya/sebelumnya memulai ayat tujuan dari pengulangan pertama. Memutar ulang setelah selesai juga mereset hitungan. Fitur bekerja dengan audio online, MP3 tersimpan, dan koleksi bawaan; audio tafsir tetap diputar satu kali per surat.
+
+Tes: node tests/ayah_repeat.cjs memeriksa urutan gabungan, pemutaran ulang, skip manual, dan kompatibilitas 1 kali. Android 15 diuji melalui UI dengan Al-Fatihah ayat 1, ulang per ayat 2 kali; media session teramati berpindah 1/2 → 2/2 pada ayat yang sama tanpa error MediaPlayer/AndroidRuntime. APK 1.0.16 (versionCode 17) ditandatangani dan dipasang di emulator; update.json diverifikasi terhadap berkas APK.
+
+
+## Pembaruan 1.0.17 — navigasi mushaf dengan usap dan ketuk
+
+Pada gambar mushaf, usap ke kanan atau ketuk 24% area tepi kiri untuk halaman berikutnya. Usap ke kiri atau ketuk tepi kanan untuk halaman sebelumnya, mengikuti arah membaca mushaf. Area tengah tidak membalik halaman. Tombol navigasi tetap tersedia.
+
+Berlaku pada tampilan biasa dan layar penuh. Pada zoom lebih dari 100%, usap/ketuk tidak membalik halaman agar gambar tetap bisa digeser. Kembalikan zoom ke 100% untuk navigasi gerakan. Gulir vertikal, long press, sentuhan dua jari dan klik sintetis setelah sentuhan tidak menyebabkan perpindahan ganda. Batas halaman tetap 1–604. Halaman berikutnya yang belum tersimpan membutuhkan internet seperti sebelumnya.
+
+Tes: node tests/mushaf_gestures.cjs mencakup arah usap/tepi, batas halaman, scroll vertikal, long press, multi-touch, zoom/pan, klik ganda dan keadaan memuat. Emulator Android 15 memverifikasi 282→283 dengan usap kanan dan kembali dengan usap kiri; ketuk tepi kiri/kanan juga berhasil. Rilis: MAQRI-1.0.17.apk, versionCode 18, dengan output/update.json yang sesuai.

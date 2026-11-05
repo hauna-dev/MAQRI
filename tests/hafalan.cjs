@@ -1,0 +1,34 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const elements = new Map();
+function element(id) { if (!elements.has(id)) elements.set(id, { value:'', hidden:false, disabled:false, classList:{add(){},remove(){}}, children:[], replaceChildren(){this.children=[];this.value='';}, append(child){this.children.push(child);if(!this.value)this.value=child.value;} }); return elements.get(id); }
+const calls=[];
+const native = new Proxy({}, {get:(_,key)=>(...args)=>calls.push([key,...args])});
+let currentScreen='', currentPage=0, fallback=0;
+const context={console,Date,Math,Number,String,setInterval:()=>1,clearInterval(){},window:{onNativeEvent:()=>fallback++},document:{createElement:()=>({}),body:{classList:{toggle(){}}}},$:element,native,toast:text=>calls.push(['toast',text]),name:s=>'Surat '+s,seconds:ms=>Math.floor(ms/1000)+'s',surahs:[],pages:[],core:{pageForVerse:()=>42},switchScreen:s=>currentScreen=s,loadPage:n=>currentPage=n,rangeFromForm:()=>({s:2,a:255,b:255})};
+vm.runInNewContext(fs.readFileSync('app/src/main/assets/hafalan.js','utf8'), context);
+assert.equal(calls[0][0],'recordings');
+element('recordStart').onclick();
+assert.deepEqual(calls.at(-1),['recordStart',2,255,255]);
+context.window.onNativeEvent('recording',{state:'recording',message:'Merekam'});
+assert.equal(element('recordStop').hidden,false);
+assert.equal(context.window.Hafalan.beforeReciter(),false);
+const row={id:'one',surah:2,first:255,last:255,created:Date.now(),duration:12000};
+context.window.onNativeEvent('recording',{state:'saved',recording:row,message:'Tersimpan'});
+context.window.onNativeEvent('recordings',{rows:[row]});
+assert.equal(element('recordStart').disabled,false);
+element('reviewRecording').onclick();
+assert.equal(currentScreen,'mushaf');assert.equal(currentPage,42);
+element('recordingPlay').onclick();assert.deepEqual(calls.at(-1),['recordingPlay','one']);
+context.window.onNativeEvent('recordingPlayback',{id:'one',playing:true,position:5000,duration:12000});
+assert.equal(element('recordingTransport').hidden,false);
+assert.equal(element('recordingSeek').value,5000);
+element('recordingSeek').value='8000';element('recordingSeek').onchange();assert.deepEqual(calls.at(-1),['recordingSeek',8000]);
+context.window.onNativeEvent('recording',{state:'error',message:'Izin ditolak'});assert.equal(element('recordStart').disabled,false);
+context.window.onNativeEvent('playback',{});assert.equal(fallback,1);
+console.log('Lulus: mulai/simpan rekaman, blokir audio bersamaan, buka halaman ayat, putar/seek, pemulihan izin, dan penerusan event.');
+
+element('recordingDelete').onclick();assert.deepEqual(calls.at(-1),['recordingDelete','one']);
+context.window.onNativeEvent('recordingDeleted',{id:'one'});context.window.onNativeEvent('recordings',{rows:[]});assert.equal(element('recordingDelete').disabled,true);assert.equal(element('recordingPlay').disabled,true);assert.equal(element('reviewRecording').hidden,true);
+console.log('Lulus: permintaan hapus dan keadaan daftar rekaman kosong.');

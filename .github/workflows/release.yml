@@ -1,0 +1,82 @@
+name: Build and publish MAQRI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - app/src/main/AndroidManifest.xml
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: maqri-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check version and existing release
+        id: version
+        shell: pwsh
+        run: |
+          [xml]$manifest = Get-Content app/src/main/AndroidManifest.xml
+          $versionName = $manifest.manifest.GetAttribute('versionName', 'http://schemas.android.com/apk/res/android')
+          $releaseTag = "v$versionName"
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne $releaseTag) { throw 'Tag and manifest version differ.' }
+          & gh release view $releaseTag --repo $env:GITHUB_REPOSITORY *> $null
+          $alreadyPublished = $LASTEXITCODE -eq 0
+          "skip=$($alreadyPublished.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          if ($alreadyPublished) { Write-Host 'This version is already published; keeping its assets unchanged.' }
+          exit 0
+      - name: Restore signing key
+        if: steps.version.outputs.skip != 'true'
+        shell: pwsh
+        env:
+          KEYSTORE_DATA: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if (!$env:KEYSTORE_DATA -or !$env:KEYSTORE_PASSWORD) { throw 'Configure the existing Android signing key and password in repository Actions secrets first.' }
+          New-Item -ItemType Directory -Force .signing | Out-Null
+          [IO.File]::WriteAllBytes((Join-Path $PWD '.signing/murojaah.jks'), [Convert]::FromBase64String($env:KEYSTORE_DATA))
+          [IO.File]::WriteAllText((Join-Path $PWD '.signing/password.txt'), $env:KEYSTORE_PASSWORD, [Text.UTF8Encoding]::new($false))
+      - name: Install Android build tools
+        if: steps.version.outputs.skip != 'true'
+        run: python tools/setup.py
+      - name: Test
+        if: steps.version.outputs.skip != 'true'
+        shell: pwsh
+        run: |
+          node test_core.cjs
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          foreach ($testFile in Get-ChildItem tests -Filter *.cjs) {
+            node $testFile.FullName
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          }
+      - name: Build signed APK
+        if: steps.version.outputs.skip != 'true'
+        run: python build.py
+      - name: Validate update metadata
+        if: steps.version.outputs.skip != 'true'
+        run: python test_updates.py
+      - name: Publish APK and update.json
+        if: steps.version.outputs.skip != 'true'
+        run: python publish_release.py --publish --target ${{ github.sha }}
+      - name: Remove signing material
+        if: always()
+        shell: pwsh
+        run: |
+          Remove-Item -LiteralPath '.signing/murojaah.jks', '.signing/password.txt' -Force -ErrorAction SilentlyContinue
+          exit 0
