@@ -62,3 +62,5 @@ Tampilan aplikasi tidak menyebut GitHub atau alamat repository. Sumber pembaruan
 ## Batas verifikasi
 
 Build APK, tanda tangan, kebijakan sumber unduhan, dan kecocokan metadata diuji lokal. Alur unduh–pasang di perangkat Android perlu diuji setelah Release tersedia. Skenario yang disarankan: pasang 1.0.10, terbitkan versi lebih tinggi, periksa pembaruan, tunggu unduhan, lalu pasang tanpa menghapus data aplikasi.
+
+Sebelum publikasi, verify_release_signing.py juga memastikan versionCode lebih tinggi dan sertifikat APK sama dengan rilis sebelumnya. Kunci lokal saat ini telah diperiksa dan cocok dengan APK v1.0.15 yang dipublikasikan. Pemeriksaan ini mencegah rilis otomatis yang tidak dapat memperbarui instalasi pengguna.

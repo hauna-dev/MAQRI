@@ -56,6 +56,8 @@ def main():
                               capture_output=True, text=True)
     if existing.returncode == 0:
         raise SystemExit('Versi ini sudah diterbitkan. Naikkan nomor versi; jangan menimpa rilis lama.')
+    from verify_release_signing import main as verify_published_signing
+    verify_published_signing()
     subprocess.run([gh, 'release', 'create', 'v' + version, str(apk), str(metadata),
                     '--repo', 'hauna-dev/MAQRI', '--target', args.target,
                     '--title', 'MAQRI ' + version, '--latest',
