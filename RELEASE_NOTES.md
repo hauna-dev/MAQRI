@@ -1,3 +1,9 @@
+# MAQRI 1.0.18
+
+- Memperbaiki pilihan surat Murojaah yang kembali ke Al-Fatihah setelah aplikasi dibuka ulang.
+- Surat, rentang ayat, qari, dan pengulangan disimpan langsung saat diubah, tanpa harus memutar audio dahulu.
+- Memulihkan pilihan dari riwayat pemutaran bagi pengguna versi sebelumnya.
+
 # MAQRI 1.0.17
 
 - Pindah halaman mushaf dengan usap kanan/kiri atau ketuk tepi halaman.
