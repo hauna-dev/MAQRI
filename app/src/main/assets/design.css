@@ -173,3 +173,16 @@ body[data-screen=mushaf] .topbar{padding-top:15px;padding-bottom:15px}#mushafScr
 @media (orientation: landscape) {
   .mushaf-fullscreen .mushaf-viewport img { height: auto; }
 }
+
+#mushafViewport { position: relative; }
+#mushafHighlights { position: absolute; top: 0; left: 0; pointer-events: none; }
+#mushafHighlights span {
+  position: absolute; background: #a6ef423d; border: 1px solid #568619;
+  border-radius: 4px; mix-blend-mode: multiply;
+}
+body:not(.mushaf-fullscreen) #mushafScreen { position: relative; }
+#mushafTargetLabel {
+  position: absolute; inset: auto auto 10px 50%; transform: translateX(-50%); margin: 0;
+  padding: 5px 10px; border-radius: 14px; background: #101537; color: #fff;
+  z-index: 1; pointer-events: none; white-space: nowrap; font-size: 12px;
+}

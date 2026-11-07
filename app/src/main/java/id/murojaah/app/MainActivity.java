@@ -56,7 +56,11 @@ public class MainActivity extends Activity {
      }
     }if(name==null||name.equals("/"))name="/index.html";if(name.contains(".."))return null;
     String mime=name.endsWith(".css")?"text/css":name.endsWith(".js")?"application/javascript":name.endsWith(".json")?"application/json":name.endsWith(".png")?"image/png":name.endsWith(".webp")?"image/webp":name.endsWith(".svg")?"image/svg+xml":"text/html";
-    try{return new WebResourceResponse(mime,"UTF-8",getAssets().open(name.substring(1)));}catch(Exception e){return new WebResourceResponse("text/plain","UTF-8",404,"Not Found",Collections.emptyMap(),new ByteArrayInputStream(new byte[0]));}}
+    try{
+     if(name.equals("/ayah-bounds-1440.json.gz")||name.equals("/ayah-bounds-1405.json.gz"))
+      return new WebResourceResponse("application/json","UTF-8",new java.util.zip.GZIPInputStream(getAssets().open(name.substring(1))));
+     return new WebResourceResponse(mime,"UTF-8",getAssets().open(name.substring(1)));
+    }catch(Exception e){return new WebResourceResponse("text/plain","UTF-8",404,"Not Found",Collections.emptyMap(),new ByteArrayInputStream(new byte[0]));}}
    public boolean shouldOverrideUrlLoading(WebView v,WebResourceRequest r){Uri u=r.getUrl();if("app.murojaah.local".equals(u.getHost()))return false;if("https".equals(u.getScheme()))try{startActivity(new Intent(Intent.ACTION_VIEW,u));}catch(Exception ignored){}return true;}
    public void onPageFinished(WebView v,String url){try{emit("playback",new JSONObject(PlaybackService.lastState));AppUpdater.emit(MainActivity.this);}catch(Exception ignored){}}
   });web.loadUrl("https://app.murojaah.local/");

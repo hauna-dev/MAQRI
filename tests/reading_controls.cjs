@@ -49,3 +49,17 @@ assert.equal(JSON.parse(saved.get('tilawahPage-1405')),121);
 vm.runInContext("setMushafEdition('1405');restoreMushafEdition()",context);
 assert.equal(el('tilawahEdition').value,'1405','The migration runs once and respects later choices');
 console.log('Lulus: 1440 H sebagai edisi utama, migrasi posisi ayat, dan pilihan edisi berikutnya.');
+
+vm.runInContext("setMushafEdition('1441')",context);
+assert.equal(vm.runInContext("core.pageForVerse(5,77,surahs,pages)",context),120);
+context.jumpCalls=[];
+vm.runInContext("screen='audio';openTilawahPage=(...args)=>jumpCalls.push(args);openPlaybackMushaf({surah:17,verse:4})",context);
+assert.equal(JSON.stringify(context.jumpCalls[0]),'[282,{"s":17,"a":4},"audio"]');
+for(const edition of ['1440','1405']){
+ const compressed=fs.readFileSync('app/src/main/assets/ayah-bounds-'+edition+'.json.gz');
+ const bounds=JSON.parse(require('node:zlib').gunzipSync(compressed));
+ assert.equal(Object.keys(bounds).length,6236);
+ assert.equal(bounds['17:4'][0],282);
+ assert.equal(bounds['17:4'].length,3,'Al-Isra 4 spans two lines');
+}
+console.log('Lulus: lompat ke ayat pemutar, pemetaan 1441 H, dan data tanda ayat.');

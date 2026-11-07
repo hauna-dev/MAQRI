@@ -10,6 +10,7 @@ function switchScreen(value){
  if(value!=='mushaf'){
   if(mushafFull)setMushafFullscreen(false);
   tilawahReader=false;
+  mushafTarget=null;
   setTilawahControls(true);
   document.body.classList.remove('tilawah-reader');
  }
@@ -37,7 +38,7 @@ function savedMushafPage(key,fallback=null,edition=mushafEdition){
 function setMushafEdition(edition){
  if(!Object.hasOwn(core.mushafEditions,edition))edition=core.defaultMushafEdition;
  mushafEdition=edition;
- pages=edition==='1440'?madani1440Pages:standardPages;
+ pages=edition==='1405'?standardPages:madani1440Pages;
  save(mushafEditionPreference,edition);
  page=savedMushafPage('mushafPage',1);
  tilawahPage=savedMushafPage('tilawahPage',savedMushafPage('mushafPage'));
@@ -61,7 +62,7 @@ function restoreMushafEdition(){
  const previous=readSaved('mushafEdition','1441')==='1405'?'1405':'1441';
  for(const key of ['mushafPage','tilawahPage']){
   const oldPage=savedMushafPage(key,null,previous);
-  const ref=standardPages[oldPage-1];
+  const ref=(previous==='1405'?standardPages:madani1440Pages)[oldPage-1];
   if(ref){
    const target=core.pageForVerse(ref.surah,ref.ayah,surahs,madani1440Pages);
    save(mushafPageKey(key,'1440'),target);
@@ -69,12 +70,13 @@ function restoreMushafEdition(){
  }
  setMushafEdition(core.defaultMushafEdition);
 }
-function openTilawahPage(n){
+function openTilawahPage(n,target=null,returnScreen='tilawah'){
  tilawahReader=true;
+ mushafReturnScreen=returnScreen;
  document.body.classList.add('tilawah-reader');
  switchScreen('mushaf');
  setMushafFullscreen(true);
- loadPage(n);
+ loadPage(n,target);
 }
 function setTilawahMode(mode){
  const byJuz=mode==='juz';
@@ -129,6 +131,10 @@ let reviewVerses=[];
 let tilawahReader=false;
 let tilawahControlsVisible=true;
 let tilawahPage=null;
+let mushafReturnScreen='tilawah';
+let mushafTarget=null;
+let mushafTargetBoxes=[];
+const ayahBounds=new Map();
 let mushafEdition=core.defaultMushafEdition;
 let standardPages=[],madani1440Pages=[];
 const mushafEditionPreference='mushafEdition-v2';
@@ -318,7 +324,60 @@ function renderPlayback(state){if(!state.status)return;lastState=state;const vis
  updateReviewMark();
  const isTafsir=state.kind==='tafsir',isReview=state.kind==='review';$('playerTitle').textContent=isTafsir?'Tafsir As-Sa’di · '+name(state.surah):name(state.surah)+' · Ayat '+state.verse;$('playerMeta').textContent=state.status==='loading'?'Menyiapkan audio…':state.status==='completed'?(isTafsir?'Audio tafsir selesai':'Selesai · Semoga hafalan semakin kuat'):state.status==='error'?'Belum dapat memutar audio':isTafsir?'Abdulrahman Al-Subhan · Way2Quran':(state.ayahRepeat>1?'Ulang ayat '+state.verseRound+'/'+state.ayahRepeat+' · ':'')+(isReview?'Ulangi Nanti '+(state.reviewIndex+1)+'/'+state.reviewCount:'Rentang '+state.round+'/'+state.repeat)+' · '+(core.reciters[state.qari]?.name||'Audio');
  $('toggleIcon').setAttribute('href',state.status==='playing'?'#i-pause':'#i-play');$('seek').max=Math.max(1,state.duration||1);$('seek').value=state.position||0;$('positionLabel').textContent=seconds(state.position);$('durationLabel').textContent=seconds(state.duration);$('playerPrev').disabled=isTafsir?state.surah<=1:isReview?state.reviewIndex<=0:state.verse<=state.first;$('playerNext').disabled=isTafsir?state.surah>=114:isReview?state.reviewIndex>=state.reviewCount-1:state.verse>=state.last;$('playerTafsir').hidden=isTafsir;$('playerMushaf').lastChild.textContent=isTafsir?'Buka mushaf surat ini':'Buka mushaf ayat ini';$('playerPrev').setAttribute('aria-label',isTafsir?'Surat sebelumnya':'Ayat sebelumnya');$('playerNext').setAttribute('aria-label',isTafsir?'Surat berikutnya':'Ayat berikutnya');if(state.error&&state.error!==renderPlayback.error){renderPlayback.error=state.error;toast(state.error);}if(state.status!=='error')renderPlayback.error='';}
-function loadPage(n){
+function openPlaybackMushaf(state){
+ try{
+  const s=Number(state.surah),a=Number(state.verse);
+  const target=core.pageForVerse(s,a,surahs,pages);
+  const returnScreen=screen==='mushaf'?mushafReturnScreen:screen;
+  openTilawahPage(target,state.kind==='tafsir'?null:{s,a},returnScreen);
+ }catch(e){toast(e.message);}
+}
+function verseBounds(edition){
+ if(edition!=='1440'&&edition!=='1405')return Promise.resolve(null);
+ if(!ayahBounds.has(edition)){
+  const request=fetch('ayah-bounds-'+edition+'.json.gz').then(response=>{
+   if(!response.ok)throw Error('Posisi ayat tidak tersedia.');
+   if(native)return response.json();
+   return new Response(response.body.pipeThrough(new DecompressionStream('gzip'))).json();
+  }).catch(()=>{
+   ayahBounds.delete(edition);
+   return null;
+  });
+  ayahBounds.set(edition,request);
+ }
+ return ayahBounds.get(edition);
+}
+function renderMushafTarget(scrollToVerse=false){
+ const overlay=$('mushafHighlights');
+ overlay.replaceChildren();
+ const image=$('mushafImage');
+ if(!mushafTarget||!mushafTargetBoxes.length||image.hidden||!image.naturalWidth||!image.naturalHeight)return;
+ const scale=Math.min(image.clientWidth/image.naturalWidth,image.clientHeight/image.naturalHeight);
+ const left=image.offsetLeft+(image.clientWidth-image.naturalWidth*scale)/2;
+ const top=image.offsetTop+(image.clientHeight-image.naturalHeight*scale)/2;
+ for(const [x,y,width,height] of mushafTargetBoxes){
+  const box=document.createElement('span');
+  box.style.left=left+x*scale+'px';
+  box.style.top=top+y*scale+'px';
+  box.style.width=width*scale+'px';
+  box.style.height=height*scale+'px';
+  overlay.append(box);
+ }
+ if(scrollToVerse){
+  const viewport=$('mushafViewport');
+  viewport.scrollTop=Math.max(0,top+mushafTargetBoxes[0][1]*scale-viewport.clientHeight*.2);
+ }
+}
+async function focusMushafVerse(edition,n,target){
+ const data=await verseBounds(edition);
+ if(mushafTarget!==target||edition!==mushafEdition||page!==n)return;
+ const entry=data?.[target.s+':'+target.a];
+ if(entry?.[0]===n)mushafTargetBoxes=entry.slice(1);
+ $('mushafTargetLabel').textContent=name(target.s)+' · Ayat '+target.a+(mushafTargetBoxes.length?'':' · Hal. '+n);
+ $('mushafTargetLabel').hidden=false;
+ renderMushafTarget(true);
+}
+function loadPage(n,target=null){
  const edition=mushafEdition;
  const forTilawah=tilawahReader;
  const persistent=!!native?.mushafCacheInfo;
@@ -326,6 +385,10 @@ function loadPage(n){
  try{url=core.pageUrl(n,edition,persistent);}
  catch(e){toast(e.message);return;}
  page=n;
+ mushafTarget=target;
+ mushafTargetBoxes=[];
+ $('mushafTargetLabel').hidden=true;
+ $('mushafHighlights').replaceChildren();
  if(!forTilawah)save(mushafPageKey('mushafPage',edition),n);
  $('pageInput').value=n;
  $('pageCounter').textContent=(forTilawah?'Hal. ':'Halaman ')+n+' / 604';
@@ -350,6 +413,7 @@ function loadPage(n){
   $('mushafViewport').scrollTop=0;
   $('mushafViewport').scrollLeft=0;
   if(persistent)native.mushafCacheInfo(n,edition);
+  if(target)focusMushafVerse(edition,n,target);
  };
  image.onerror=()=>{
   if(edition!==mushafEdition)return;
@@ -419,7 +483,7 @@ function renderUpdate(data){
  $('installUpdate').hidden=data.state!=='ready';$('checkUpdate').disabled=['checking','downloading','verifying'].includes(data.state);
 }
 window.onNativeEvent=(type,data)=>{if(type==='mushafCache')renderMushafCache(data);else if(type==='update')renderUpdate(data);else if(type==='playback')renderPlayback(data);else if(type==='error'){toast(data.message);$('downloadBtn').disabled=false;$('downloadProgress').hidden=true;}else if(type==='tafsir')renderTafsir(data);else if(type==='tafsirError'){if(data.id!==tafsirRequest)return;$('tafsirBtn').disabled=false;$('tafsirStatus').hidden=false;$('tafsirStatus').textContent=data.message;updateTafsirNavigation();}else if(type==='library')renderLibrary(data);else if(type==='download'){$('downloadProgress').hidden=false;$('downloadText').textContent=data.finished?'Unduhan selesai': 'Mengunduh '+data.done+' dari '+data.total+' ayat';const percent=Math.round(data.done/data.total*100);$('downloadPercent').textContent=percent+'%';$('downloadBar').value=percent;if(data.finished){$('downloadBtn').disabled=false;toast('Audio tersimpan. Siap didengar tanpa internet.');}}};
-window.handleBack=()=>{if($('recordingPanel').open){setRecordingPanel(false);return true;}if(tilawahReader){switchScreen('tilawah');return true;}if(mushafFull){setMushafFullscreen(false);return true;}if(screen!=='audio'){switchScreen('audio');return true;}return false;};
+window.handleBack=()=>{if($('recordingPanel').open){setRecordingPanel(false);return true;}if(tilawahReader){switchScreen(mushafReturnScreen);return true;}if(mushafFull){setMushafFullscreen(false);return true;}if(screen!=='audio'){switchScreen('audio');return true;}return false;};
 async function init(){try{
  const loadJson=async path=>{
   const response=await fetch(path);
@@ -469,7 +533,10 @@ async function init(){try{
  $('continueBtn').onclick=()=>{if(lastRange)play({...lastRange});};document.querySelector('.brand').onclick=e=>{e.preventDefault();switchScreen('audio');};
  document.querySelectorAll('[data-screen]').forEach(el=>el.onclick=()=>switchScreen(el.dataset.screen));
  setupMushafGestures();
- $('pageForm').onsubmit=e=>{e.preventDefault();zoom=100;applyMushafZoom();loadPage(Number($('pageInput').value));};$('prevPage').onclick=()=>loadPage(page-1);$('nextPage').onclick=()=>loadPage(page+1);$('retryPage').onclick=()=>loadPage(page);
+ if(window.ResizeObserver)new ResizeObserver(()=>{
+  if(mushafTargetBoxes.length)renderMushafTarget(true);
+ }).observe($('mushafImage'));
+ $('pageForm').onsubmit=e=>{e.preventDefault();zoom=100;applyMushafZoom();loadPage(Number($('pageInput').value));};$('prevPage').onclick=()=>loadPage(page-1);$('nextPage').onclick=()=>loadPage(page+1);$('retryPage').onclick=()=>loadPage(page,mushafTarget);
  $('recordingPanelToggle').onclick=()=>setRecordingPanel(true);$('recordingPanelClose').onclick=()=>setRecordingPanel(false);$('recordingPanel').addEventListener('close',()=>$('recordingPanelToggle').setAttribute('aria-expanded','false'));$('recordingPanel').addEventListener('click',event=>{if(event.target===$('recordingPanel')){const rect=$('recordingPanel').getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)setRecordingPanel(false);}});
  $('mushafFullscreen').onclick=()=>setMushafFullscreen(!mushafFull);document.addEventListener('keydown',event=>{if(event.key==='Escape'&&mushafFull)window.handleBack();});
  $('zoomIn').onclick=()=>{zoom=Math.min(250,zoom+25);applyMushafZoom();};$('zoomOut').onclick=()=>{zoom=Math.max(100,zoom-25);applyMushafZoom();};
@@ -480,7 +547,7 @@ async function init(){try{
  $('openOfflinePage').onclick=()=>{const n=Number($('offlinePageSelect').value);if(n>=1&&n<=604){switchScreen('mushaf');loadPage(n);}};
  $('goDownload').onclick=()=>switchScreen('audio');$('clearBtn').onclick=()=>native&&native.clearDownloads();document.querySelectorAll('[data-url]').forEach(el=>el.onclick=()=>openSource(el.dataset.url));
  $('playerToggle').onclick=()=>control('toggle');$('playerNext').onclick=()=>control('next');$('playerPrev').onclick=()=>control('prev');$('playerClose').onclick=()=>control('stop');$('seek').onchange=()=>{if(native)native.seek(Number($('seek').value));else if(previewPlayer)previewPlayer.audio.currentTime=Number($('seek').value)/1000;};updateSurah(false);
- $('playerMushaf').onclick=()=>{try{const s=Number(lastState.surah),a=Number(lastState.verse);const target=core.pageForVerse(s,a,surahs,pages);switchScreen('mushaf');loadPage(target);}catch(e){toast(e.message);}};
+ $('playerMushaf').onclick=()=>openPlaybackMushaf(lastState);
  $('playerTafsir').onclick=()=>{try{const r=core.validate(Number(lastState.surah),Number(lastState.verse),Number(lastState.verse),surahs);$('tafsirRange').value=r.s+':'+r.a;switchScreen('tafsir');setTafsirMode('read');requestTafsir();}catch(e){toast(e.message);}};
  $('checkUpdate').onclick=()=>{if(native){renderUpdate({state:'checking'});native.checkUpdates();}else toast('Pemeriksaan pembaruan tersedia di aplikasi Android.');};
  $('installUpdate').onclick=()=>{if(native)native.installUpdate();};

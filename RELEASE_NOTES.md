@@ -1,3 +1,9 @@
+# MAQRI 1.0.25
+
+- Buka mushaf ayat ini langsung membuka halaman ayat dalam layar penuh.
+- Madani 1440 H dan 1405 H menandai ayat tujuan dan menggulir ke posisinya saat halaman lebih tinggi dari layar. Data posisi dari [Quran Android 1440 H](https://files.quran.app/hafs/madani_1440/databases/ayahinfo/ayahinfo_1352.zip) dan [Quran Android 1405 H](https://files.quran.app/hafs/madani/databases/ayahinfo/ayahinfo_1260.zip).
+- Madani 1441 H membuka halaman dan menampilkan nomor ayat tujuan.
+
 # MAQRI 1.0.24
 
 - Mushaf layar penuh pada posisi landscape mengikuti lebar layar. Gulir vertikal untuk membaca seluruh halaman dan usap mendatar untuk pindah halaman.
