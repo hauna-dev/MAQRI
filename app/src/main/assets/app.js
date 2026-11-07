@@ -27,6 +27,28 @@ function renderTilawahResume(){
  $('tilawahResumeTitle').textContent=tilawahPage?'Lanjutkan tilawah':'Mulai membaca';
  $('tilawahResumePage').textContent=(ref?name(ref.surah)+' · ':'')+'Halaman '+(tilawahPage||1);
 }
+function mushafPageKey(key,edition=mushafEdition){
+ return edition==='1441'?key:key+'-'+edition;
+}
+function savedMushafPage(key,fallback=null){
+ const n=Number(readSaved(mushafPageKey(key),fallback));
+ return Number.isInteger(n)&&n>=1&&n<=604?n:fallback;
+}
+function setMushafEdition(edition){
+ if(!Object.hasOwn(core.mushafEditions,edition))edition='1441';
+ mushafEdition=edition;
+ save('mushafEdition',edition);
+ page=savedMushafPage('mushafPage',1);
+ tilawahPage=savedMushafPage('tilawahPage',savedMushafPage('mushafPage'));
+ $('tilawahEdition').value=edition;
+ $('offlineEdition').value=edition;
+ const info=core.mushafEditions[edition];
+ $('mushafEditionNote').textContent='Riwayat Hafs · 604 halaman · '+info.label;
+ $('mushafSourceNote').textContent='Sumber gambar Mushaf: '+info.source+'.';
+ renderTilawahResume();
+ renderMushafCache({edition,page:0,saved:false,pages:[],count:0,bytes:0});
+ if(screen==='library'&&native?.mushafCacheInfo)native.mushafCacheInfo(0,edition);
+}
 function openTilawahPage(n){
  tilawahReader=true;
  document.body.classList.add('tilawah-reader');
@@ -87,6 +109,7 @@ let reviewVerses=[];
 let tilawahReader=false;
 let tilawahControlsVisible=true;
 let tilawahPage=null;
+let mushafEdition='1441';
 
 // Madani juz boundaries (Quran Android's MadaniDataSource). Some start mid-page.
 const juzPages=[1,22,42,62,82,102,121,142,162,182,201,222,242,262,282,
@@ -273,7 +296,48 @@ function renderPlayback(state){if(!state.status)return;lastState=state;const vis
  updateReviewMark();
  const isTafsir=state.kind==='tafsir',isReview=state.kind==='review';$('playerTitle').textContent=isTafsir?'Tafsir As-Sa’di · '+name(state.surah):name(state.surah)+' · Ayat '+state.verse;$('playerMeta').textContent=state.status==='loading'?'Menyiapkan audio…':state.status==='completed'?(isTafsir?'Audio tafsir selesai':'Selesai · Semoga hafalan semakin kuat'):state.status==='error'?'Belum dapat memutar audio':isTafsir?'Abdulrahman Al-Subhan · Way2Quran':(state.ayahRepeat>1?'Ulang ayat '+state.verseRound+'/'+state.ayahRepeat+' · ':'')+(isReview?'Ulangi Nanti '+(state.reviewIndex+1)+'/'+state.reviewCount:'Rentang '+state.round+'/'+state.repeat)+' · '+(core.reciters[state.qari]?.name||'Audio');
  $('toggleIcon').setAttribute('href',state.status==='playing'?'#i-pause':'#i-play');$('seek').max=Math.max(1,state.duration||1);$('seek').value=state.position||0;$('positionLabel').textContent=seconds(state.position);$('durationLabel').textContent=seconds(state.duration);$('playerPrev').disabled=isTafsir?state.surah<=1:isReview?state.reviewIndex<=0:state.verse<=state.first;$('playerNext').disabled=isTafsir?state.surah>=114:isReview?state.reviewIndex>=state.reviewCount-1:state.verse>=state.last;$('playerTafsir').hidden=isTafsir;$('playerMushaf').lastChild.textContent=isTafsir?'Buka mushaf surat ini':'Buka mushaf ayat ini';$('playerPrev').setAttribute('aria-label',isTafsir?'Surat sebelumnya':'Ayat sebelumnya');$('playerNext').setAttribute('aria-label',isTafsir?'Surat berikutnya':'Ayat berikutnya');if(state.error&&state.error!==renderPlayback.error){renderPlayback.error=state.error;toast(state.error);}if(state.status!=='error')renderPlayback.error='';}
-function loadPage(n){try{core.pageUrl(n);}catch(e){toast(e.message);return;}page=n;if(!tilawahReader)save('mushafPage',n);$('pageInput').value=n;$('pageCounter').textContent=(tilawahReader?'Hal. ':'Halaman ')+n+' / 604';$('prevPage').disabled=n===1;$('nextPage').disabled=n===604;$('pageStatus').hidden=false;$('pageStatus').textContent='Memuat halaman '+n+'…';$('mushafImage').alt='Halaman Mushaf Madinah '+n;$('mushafImage').hidden=true;$('retryPage').hidden=true;const persistent=!!(native&&native.mushafCacheInfo);const url=persistent?'https://app.murojaah.local/mushaf/'+String(n).padStart(3,'0')+'.webp?v='+Date.now():core.pageUrl(n);$('mushafOfflineStatus').textContent=persistent?'Membuka halaman tersimpan atau mengunduh halaman…':'Penyimpanan mushaf offline tersedia di aplikasi Android.';$('mushafImage').onload=()=>{if(tilawahReader){tilawahPage=n;save('tilawahPage',n);}$('pageStatus').hidden=true;$('mushafImage').hidden=false;$('mushafViewport').scrollTop=0;$('mushafViewport').scrollLeft=0;if(persistent)native.mushafCacheInfo(n);};$('mushafImage').onerror=()=>{if(tilawahReader)setTilawahControls(true);$('pageStatus').textContent='Halaman ini belum tersedia offline atau belum dapat dimuat. Sambungkan internet lalu coba lagi.';$('mushafOfflineStatus').textContent='Halaman belum berhasil dibuka.';$('retryPage').hidden=false;};$('mushafImage').src=url;}
+function loadPage(n){
+ const edition=mushafEdition;
+ const forTilawah=tilawahReader;
+ const persistent=!!native?.mushafCacheInfo;
+ let url;
+ try{url=core.pageUrl(n,edition,persistent);}
+ catch(e){toast(e.message);return;}
+ page=n;
+ if(!forTilawah)save(mushafPageKey('mushafPage',edition),n);
+ $('pageInput').value=n;
+ $('pageCounter').textContent=(forTilawah?'Hal. ':'Halaman ')+n+' / 604';
+ $('prevPage').disabled=n===1;
+ $('nextPage').disabled=n===604;
+ $('pageStatus').hidden=false;
+ $('pageStatus').textContent='Memuat halaman '+n+'…';
+ const image=$('mushafImage');
+ image.alt='Halaman '+n+' · '+core.mushafEditions[edition].label;
+ image.hidden=true;
+ $('retryPage').hidden=true;
+ $('mushafOfflineStatus').textContent=persistent?'Membuka halaman tersimpan atau mengunduh halaman…':'Penyimpanan mushaf offline tersedia di aplikasi Android.';
+ image.onload=()=>{
+  if(edition!==mushafEdition)return;
+  if(forTilawah){
+   tilawahPage=n;
+   save(mushafPageKey('tilawahPage',edition),n);
+   if(screen==='tilawah')renderTilawahResume();
+  }
+  $('pageStatus').hidden=true;
+  image.hidden=false;
+  $('mushafViewport').scrollTop=0;
+  $('mushafViewport').scrollLeft=0;
+  if(persistent)native.mushafCacheInfo(n,edition);
+ };
+ image.onerror=()=>{
+  if(edition!==mushafEdition)return;
+  if(tilawahReader)setTilawahControls(true);
+  $('pageStatus').textContent='Halaman ini belum tersedia offline atau belum dapat dimuat. Sambungkan internet lalu coba lagi.';
+  $('mushafOfflineStatus').textContent='Halaman belum berhasil dibuka.';
+  $('retryPage').hidden=false;
+ };
+ image.src=persistent?url+'?v='+Date.now():url;
+}
 function turnMushafPage(delta){if(screen!=='mushaf'||zoom>100||$('mushafImage').hidden)return;const target=page+delta;if(target<1||target>604){toast(target<1?'Ini halaman pertama mushaf.':'Ini halaman terakhir mushaf.');return;}loadPage(target);}
 function setTilawahControls(visible){
  tilawahControlsVisible=visible;
@@ -316,8 +380,8 @@ function requestTafsir(){try{const r=core.parse($('tafsirRange').value,surahs);t
  }catch(e){$('tafsirBtn').disabled=false;updateTafsirNavigation();toast(e.message);}}
 function renderTafsir(result){if(result.id!==tafsirRequest)return;if(tafsirActiveRange&&result.verses.length){tafsirActiveRange={s:result.surah,a:Math.min(tafsirActiveRange.a,...result.verses.map(v=>v.verse)),b:Math.max(tafsirActiveRange.b,...result.verses.map(v=>v.lastVerse||v.verse))};}updateTafsirNavigation();$('tafsirBtn').disabled=false;$('tafsirStatus').hidden=true;$('tafsirResults').replaceChildren();
  for(const item of result.verses){const card=document.createElement('article');card.className='tafsir-card';const head=document.createElement('header'),label=document.createElement('span');label.className='verse-label';label.textContent=result.surah+':'+item.verse+(item.lastVerse>item.verse?'–'+item.lastVerse:'');const source=document.createElement('button');source.className='source-link';source.textContent=result.language==='id'?'As-Sa’di · IslamEnc ↗':'As-Sa’di · tafsir.app ↗';source.onclick=()=>openSource(item.url);head.append(label,source);const body=document.createElement('div');body.className=item.text?(result.language==='id'?'tafsir-indonesian':'tafsir-arabic'):'tafsir-missing';body.textContent=item.text||'Situs tidak menyediakan teks tafsir tersendiri pada ayat ini.';if(item.text)body.lang=result.language==='id'?'id':'ar';card.append(head);if(item.lastVerse>item.verse){const note=document.createElement('p');note.className='source-note';note.textContent='Penjelasan gabungan ayat '+item.verse+'–'+item.lastVerse+' sesuai pengelompokan sumber.';card.append(note);}card.append(body);$('tafsirResults').append(card);}}
-function loadLibrary(){if(native){if(native.mushafCacheInfo)native.mushafCacheInfo(0);native.library();native.updateStatus();}else renderLibrary({rows:[],count:0,bytes:0});}
-function renderMushafCache(data){if(data.page===page)$('mushafOfflineStatus').textContent=data.saved?'✓ Halaman '+page+' tersimpan · Bisa dibaca offline':'Halaman ditampilkan, tetapi belum tersimpan. Periksa ruang penyimpanan lalu buka kembali.';$('mushafSavedCount').textContent=data.count+' halaman tersimpan';$('mushafSavedSize').textContent=(data.bytes/1024/1024).toFixed(1)+' MB · Tersimpan di perangkat ini';const select=$('offlinePageSelect'),previous=select.value;select.replaceChildren();for(const n of data.pages){select.append(Object.assign(document.createElement('option'),{value:String(n),textContent:'Halaman '+n}));}if(!data.pages.length)select.append(Object.assign(document.createElement('option'),{value:'',textContent:'Belum ada halaman tersimpan'}));else if(data.pages.includes(Number(previous)))select.value=previous;$('openOfflinePage').disabled=!data.pages.length;}
+function loadLibrary(){if(native){if(native.mushafCacheInfo)native.mushafCacheInfo(0,mushafEdition);native.library();native.updateStatus();}else renderLibrary({rows:[],count:0,bytes:0});}
+function renderMushafCache(data){if(data.edition!==mushafEdition)return;if(data.page===page)$('mushafOfflineStatus').textContent=data.saved?'✓ Halaman '+page+' tersimpan · Bisa dibaca offline':'Halaman ditampilkan, tetapi belum tersimpan. Periksa ruang penyimpanan lalu buka kembali.';$('mushafSavedCount').textContent=data.count+' halaman tersimpan';$('mushafSavedSize').textContent=(data.bytes/1024/1024).toFixed(1)+' MB · Tersimpan di perangkat ini';const select=$('offlinePageSelect'),previous=select.value;select.replaceChildren();for(const n of data.pages){select.append(Object.assign(document.createElement('option'),{value:String(n),textContent:'Halaman '+n}));}if(!data.pages.length)select.append(Object.assign(document.createElement('option'),{value:'',textContent:'Belum ada halaman tersimpan'}));else if(data.pages.includes(Number(previous)))select.value=previous;$('openOfflinePage').disabled=!data.pages.length;}
 function renderLibrary(data){$('savedCount').replaceChildren(document.createTextNode(String(data.count)+' '),Object.assign(document.createElement('small'),{textContent:'ayat'}));$('savedSize').textContent=(data.bytes/1024/1024).toFixed(1)+' MB digunakan';$('clearBtn').hidden=data.count===0;$('libraryList').replaceChildren();
  if(!data.rows.length){const empty=document.createElement('div');empty.className='empty-card';empty.textContent=data.bundled?'Koleksi audio bawaan tersedia. Pilih “Koleksi lokal” pada menu qari.':'Belum ada unduhan. Pilih rentang ayat di tab Murojaah, lalu ketuk Unduh.';$('libraryList').append(empty);}
  for(const row of data.rows){const el=document.createElement('div');el.className='library-row';const num=document.createElement('span');num.className='verse-label';num.textContent=String(row.surah).padStart(2,'0');const info=document.createElement('div'),title=document.createElement('strong'),meta=document.createElement('p');title.textContent=name(row.surah);meta.textContent=row.count+' ayat tersimpan · '+(core.reciters[row.qari]?.name||'Audio');info.append(title,meta);const check=document.createElement('span');check.className='check';check.append(icon('check'));el.append(num,info,check);$('libraryList').append(el);}}
@@ -348,9 +412,9 @@ async function init(){try{
  $('playReviewAll').onclick=()=>playReview(reviewVerses);
  $('markVerse').onclick=()=>changeReviewMark(lastState.surah,lastState.verse);
  updateReviewMark();
- page=Number(readSaved('mushafPage',1));if(page<1||page>604)page=1;
- const savedPage=Number(readSaved('tilawahPage',readSaved('mushafPage',null)));
- if(Number.isInteger(savedPage)&&savedPage>=1&&savedPage<=604)tilawahPage=savedPage;
+ setMushafEdition(readSaved('mushafEdition','1441'));
+ $('tilawahEdition').onchange=event=>setMushafEdition(event.target.value);
+ $('offlineEdition').onchange=event=>setMushafEdition(event.target.value);
  setTilawahMode(readSaved('tilawahMode','surat')==='juz'?'juz':'surat');
  $('tilawahResume').onclick=()=>openTilawahPage(tilawahPage||1);
  $('tilawahIndex').onclick=()=>switchScreen('tilawah');

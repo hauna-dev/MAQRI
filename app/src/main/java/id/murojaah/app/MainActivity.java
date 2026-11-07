@@ -46,7 +46,14 @@ public class MainActivity extends Activity {
   web.setWebViewClient(new WebViewClient(){
    public WebResourceResponse shouldInterceptRequest(WebView v,WebResourceRequest request){Uri uri=request.getUrl();if(!"app.murojaah.local".equals(uri.getHost()))return null;
     String name=uri.getPath();if(name!=null&&name.startsWith("/mushaf/")){
-     try{int page=MushafCache.pageFromPath(name);return new WebResourceResponse("image/webp",null,200,"OK",Collections.singletonMap("Cache-Control","no-store"),MushafCache.open(MainActivity.this,page));}catch(Exception e){android.util.Log.w("MaqriMushaf","Page unavailable",e);return new WebResourceResponse("text/plain","UTF-8",503,"Page Unavailable",Collections.emptyMap(),new ByteArrayInputStream(new byte[0]));}
+     try{
+      MushafCache.Edition edition=MushafCache.Edition.fromPath(name);
+      int page=edition.pageFromPath(name);
+      return new WebResourceResponse(edition.mime(),null,200,"OK",Collections.singletonMap("Cache-Control","no-store"),MushafCache.open(MainActivity.this,edition,page));
+     }catch(Exception e){
+      android.util.Log.w("MaqriMushaf","Page unavailable",e);
+      return new WebResourceResponse("text/plain","UTF-8",503,"Page Unavailable",Collections.emptyMap(),new ByteArrayInputStream(new byte[0]));
+     }
     }if(name==null||name.equals("/"))name="/index.html";if(name.contains(".."))return null;
     String mime=name.endsWith(".css")?"text/css":name.endsWith(".js")?"application/javascript":name.endsWith(".json")?"application/json":name.endsWith(".png")?"image/png":name.endsWith(".webp")?"image/webp":name.endsWith(".svg")?"image/svg+xml":"text/html";
     try{return new WebResourceResponse(mime,"UTF-8",getAssets().open(name.substring(1)));}catch(Exception e){return new WebResourceResponse("text/plain","UTF-8",404,"Not Found",Collections.emptyMap(),new ByteArrayInputStream(new byte[0]));}}
@@ -65,7 +72,12 @@ public class MainActivity extends Activity {
   if(Build.VERSION.SDK_INT>=30){WindowInsetsController controller=getWindow().getInsetsController();if(controller!=null){if(enabled){controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);controller.hide(WindowInsets.Type.systemBars());}else controller.show(WindowInsets.Type.systemBars());}}
  }
  class Bridge {
-  @JavascriptInterface public void mushafCacheInfo(int page){workers.execute(()->{try{emit("mushafCache",MushafCache.info(MainActivity.this,page));}catch(Exception ignored){}});}
+  @JavascriptInterface public void mushafCacheInfo(int page,String edition){
+   workers.execute(()->{
+    try{emit("mushafCache",MushafCache.info(MainActivity.this,MushafCache.Edition.byId(edition),page));}
+    catch(Exception ignored){}
+   });
+  }
 
   @JavascriptInterface public void mushafFullscreen(boolean enabled){runOnUiThread(()->readerFullscreen(enabled));}
   @JavascriptInterface public void recordingDelete(String id){runOnUiThread(()->hafalan.confirmDelete(id));}

@@ -160,3 +160,11 @@ body[data-screen=mushaf] .topbar{padding-top:15px;padding-bottom:15px}#mushafScr
 .tilawah-controls-hidden .player,
 .tilawah-controls-hidden #recordingTransport { display: none; }
 .tilawah-controls-hidden.mushaf-fullscreen .mushaf-viewport { margin-bottom: 0; }
+
+.tilawah-edition { margin: 0 14px 12px; }
+.tilawah-edition label { color: var(--tilawah-muted); }
+#tilawahEdition {
+  min-height: 44px; padding: 8px 10px; background: #1d254c;
+  border: 1px solid #434d73; border-radius: 10px; color: #faf7ef; font-size: 13px;
+}
+#offlineEdition { min-height: 44px; }

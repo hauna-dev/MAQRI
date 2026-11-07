@@ -1,3 +1,8 @@
+# MAQRI 1.0.22
+
+- Tambah pilihan Madani Klasik 1405 H dari Quran Android di tab Tilawah.
+- Simpan posisi baca dan halaman offline secara terpisah untuk setiap edisi Mushaf.
+
 # MAQRI 1.0.21
 
 - Tilawah langsung terbuka memenuhi layar Android dengan bilah kontrol tersembunyi. Ketuk tengah halaman untuk menampilkan atau menyembunyikan kontrol.
