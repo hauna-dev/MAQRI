@@ -10,10 +10,12 @@ import java.util.Locale;
 /** Verified page images in persistent app storage, independent of WebView's HTTP cache. */
 final class MushafCache {
  enum Edition {
-  MADANI_1441("1441","madani-hafs-1441-v1","/mushaf/","","webp",
-    "https://adhan.trinadhthatakula.com/mushaf/madani-hafs-1441-v1/"),
+  MADANI_1440("1440","madani-hafs-1440","/mushaf/1440/","page","png",
+    "https://files.quran.app/hafs/madani_1440/width_1352/"),
   MADANI_1405("1405","madani-hafs-1405","/mushaf/1405/","page","png",
-    "https://files.quran.app/hafs/madani/width_1260/");
+    "https://files.quran.app/hafs/madani/width_1260/"),
+  MADANI_1441("1441","madani-hafs-1441-v1","/mushaf/","","webp",
+    "https://adhan.trinadhthatakula.com/mushaf/madani-hafs-1441-v1/");
 
   final String id,folder,pathPrefix,filenamePrefix,extension,baseUrl;
   Edition(String id,String folder,String pathPrefix,String filenamePrefix,String extension,String baseUrl){
@@ -29,7 +31,8 @@ final class MushafCache {
    throw new IllegalArgumentException("Edisi Mushaf tidak valid");
   }
   static Edition fromPath(String path){
-   return path.startsWith(MADANI_1405.pathPrefix)?MADANI_1405:MADANI_1441;
+   for(Edition edition:values())if(path.startsWith(edition.pathPrefix))return edition;
+   throw new IllegalArgumentException("Path halaman tidak valid");
   }
   int pageFromPath(String path){
    if(!path.startsWith(pathPrefix))throw new IllegalArgumentException("Path halaman tidak valid");

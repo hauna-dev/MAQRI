@@ -1,3 +1,10 @@
+# MAQRI 1.0.23
+
+- Jadikan Madani 1440 H dari Quran Android sebagai edisi utama Tilawah.
+- Gunakan indeks ayat khusus edisi 1440 H dan pindahkan posisi baca lama ke halaman yang memuat ayat yang sama.
+- Edisi 1405 H dan 1441 H tetap tersedia beserta halaman offline masing-masing.
+- Sumber: [paket halaman Quran Android](https://files.quran.app/hafs/madani_1440/zips/images_1352.zip) dan [indeks ayat Quran Foundation](https://github.com/quran/quran-ios/blob/ca3a5703302bd7291b248b105a8ce6000fb27e4c/Model/QuranKit/Sources/ReadingInfo/Madani1440QuranReadingInfoRawData.swift).
+
 # MAQRI 1.0.22
 
 - Tambah pilihan Madani Klasik 1405 H dari Quran Android di tab Tilawah.

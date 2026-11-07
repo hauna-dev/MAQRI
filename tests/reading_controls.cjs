@@ -36,3 +36,16 @@ assert.equal(tilawahList.children.length,30);
 assert.equal(rowPage(6),'Hal. 121','Juz 7 starts partway through page 121');
 assert.equal(rowPage(29),'Hal. 582');
 console.log('Lulus: indeks 114 surat dan 30 juz, termasuk awal Al-Isra dan Juz 30.');
+
+el('offlinePageSelect').append=()=>{};
+context.pageMetadata1440=require('../app/src/main/assets/pages-1440.json');
+vm.runInContext("standardPages=pageMetadata;madani1440Pages=pageMetadata1440",context);
+saved.set('mushafEdition',JSON.stringify('1405'));
+saved.set('tilawahPage-1405',JSON.stringify(121));
+vm.runInContext('restoreMushafEdition()',context);
+assert.equal(el('tilawahEdition').value,'1440');
+assert.equal(JSON.parse(saved.get('tilawahPage-1440')),120,'Keep Al-Maidah 77 when changing layouts');
+assert.equal(JSON.parse(saved.get('tilawahPage-1405')),121);
+vm.runInContext("setMushafEdition('1405');restoreMushafEdition()",context);
+assert.equal(el('tilawahEdition').value,'1405','The migration runs once and respects later choices');
+console.log('Lulus: 1440 H sebagai edisi utama, migrasi posisi ayat, dan pilihan edisi berikutnya.');

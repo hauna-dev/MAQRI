@@ -4,13 +4,16 @@
  function validate(s,a,b,surahs){s=Number(s);a=Number(a);b=Number(b);if(![s,a,b].every(Number.isInteger)||s<1||s>114||a<1||b<a||b>surahs[s-1].verses_count||b-a+1>100)throw Error('Periksa nomor surat dan ayat. Maksimal 100 ayat per rentang.');return {s,a,b};}
  function parse(text,surahs){text=text.trim().replace(/^(?:tafsir\s+)?/i,'').replace(/[–—]/g,'-');const m=text.match(/^(\d+)\s*:\s*(\d+)(?:\s*-\s*(\d+))?$/)||text.match(/^(\d+)\s+(\d+)(?:\s+(\d+))?$/);if(!m)throw Error('Gunakan format 2:25-30 atau 2:255.');return validate(m[1],m[2],m[3]||m[2],surahs);}
  function audioUrl(q,s,a){if(!reciters[q]||!reciters[q].folder)throw Error('Qari online tidak tersedia.');return 'https://everyayah.com/data/'+reciters[q].folder+'/'+String(s).padStart(3,'0')+String(a).padStart(3,'0')+'.mp3';}
+ const defaultMushafEdition='1440';
  const mushafEditions=Object.freeze({
+  '1440':Object.freeze({label:'Madani 1440 H',source:'Quran Android',local:'/mushaf/1440/',
+   remote:'https://files.quran.app/hafs/madani_1440/width_1352/page',extension:'.png'}),
   '1441':Object.freeze({label:'Madani 1441 H',source:'Adhan',local:'/mushaf/',
    remote:'https://adhan.trinadhthatakula.com/mushaf/madani-hafs-1441-v1/',extension:'.webp'}),
   '1405':Object.freeze({label:'Madani Klasik 1405 H',source:'Quran Android',local:'/mushaf/1405/',
    remote:'https://files.quran.app/hafs/madani/width_1260/page',extension:'.png'})
  });
- function pageUrl(n,edition='1441',cached=false){
+ function pageUrl(n,edition=defaultMushafEdition,cached=false){
   if(!Number.isInteger(n)||n<1||n>604)throw Error('Nomor halaman harus 1–604.');
   if(!Object.hasOwn(mushafEditions,edition))throw Error('Edisi Mushaf tidak valid.');
   const info=mushafEditions[edition];
@@ -18,5 +21,5 @@
   return prefix+String(n).padStart(3,'0')+info.extension;
  }
  function pageForVerse(s,a,surahs,pages){validate(s,a,a,surahs);if(pages.length!==604)throw Error('Data halaman belum tersedia.');let low=0,high=pages.length-1,result=0;while(low<=high){const mid=(low+high)>>1,ref=pages[mid];if(ref.surah<s||(ref.surah===s&&ref.ayah<=a)){result=mid;low=mid+1;}else high=mid-1;}return result+1;}
- const api={reciters,validate,parse,audioUrl,mushafEditions,pageUrl,pageForVerse};if(typeof module==='object'&&module.exports)module.exports=api;else root.MurojaahCore=api;
+ const api={reciters,validate,parse,audioUrl,defaultMushafEdition,mushafEditions,pageUrl,pageForVerse};if(typeof module==='object'&&module.exports)module.exports=api;else root.MurojaahCore=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
