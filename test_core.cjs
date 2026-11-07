@@ -30,3 +30,10 @@ assert.equal(pages1440.length,604);
 for(const [surah,ayah,page] of [[5,77,120],[5,78,121],[17,1,282],[55,17,531],[80,41,586],[114,1,604]]) {
  assert.equal(core.pageForVerse(surah,ayah,data,pages1440),page);
 }
+
+const uthmani=require('node:zlib').gunzipSync(fs.readFileSync(path.join(__dirname,'app/src/main/assets/quran-uthmani.txt.gz'))).toString('utf8');
+const uthmaniLines=uthmani.split(/\r?\n/).filter(line=>/^\d+\|\d+\|/.test(line));
+assert.equal(uthmaniLines.length,6236);
+assert.match(uthmani,/Tanzil Project/);
+const arabic=uthmaniLines.find(line=>line.startsWith('2|255|')).split('|')[2];
+assert.equal(core.ayahWithEnding(arabic,255),arabic+' \u06dd\u0662\u0665\u0665');

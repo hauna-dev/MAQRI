@@ -7,7 +7,13 @@ function end(x,y=100){now+=100;handlers.touchend({touches:[],changedTouches:[{cl
 start(100);end(300);assert.deepEqual(turns,[43]);start(300);end(100);assert.equal(turns.at(-1),42);
 start(20);end(20);assert.equal(turns.at(-1),43);handlers.click({clientX:20,detail:1});assert.equal(turns.length,3,'Ignore synthetic click after touch');start(380);end(380);assert.equal(turns.at(-1),42);
 let count=turns.length;start(200);end(200);start(100);end(105,350);assert.equal(turns.length,count,'Center taps and vertical scroll do not turn');
-start(20);now+=600;end(20);assert.equal(turns.length,count,'Long press does not turn');
+context.copyHits=[];
+vm.runInContext('openCopyVerse=(x,y)=>copyHits.push([x,y])',context);
+start(20);now+=600;end(20);
+assert.equal(turns.length,count,'Long press does not turn');
+assert.equal(JSON.stringify(context.copyHits),'[[20,100]]');
+handlers.contextmenu({clientX:20,clientY:100,preventDefault(){}});
+assert.equal(context.copyHits.length,1,'A second context event does not reopen the same verse');
 start(100);handlers.touchmove({touches:[{clientX:300,clientY:100}],cancelable:true,preventDefault(){}});end(100);assert.equal(turns.length,count,'Dragging out and back is not a tap');
 start(100);handlers.touchmove({touches:[{clientX:100,clientY:100},{clientX:200,clientY:100}]});end(300);assert.equal(turns.length,count,'Multi-touch does not turn');
 vm.runInContext('zoom=125',context);start(100);end(300);start(20);end(20);assert.equal(turns.length,count,'Zoomed image retains pan/tap');vm.runInContext('zoom=100;page=604',context);start(100);end(300);assert.equal(turns.length,count,'Last page boundary');vm.runInContext('page=1',context);start(300);end(100);assert.equal(turns.length,count,'First page boundary');

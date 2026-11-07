@@ -59,6 +59,8 @@ public class MainActivity extends Activity {
     try{
      if(name.equals("/ayah-bounds-1440.json.gz")||name.equals("/ayah-bounds-1405.json.gz"))
       return new WebResourceResponse("application/json","UTF-8",new java.util.zip.GZIPInputStream(getAssets().open(name.substring(1))));
+     if(name.equals("/quran-uthmani.txt.gz"))
+      return new WebResourceResponse("text/plain","UTF-8",new java.util.zip.GZIPInputStream(getAssets().open(name.substring(1))));
      return new WebResourceResponse(mime,"UTF-8",getAssets().open(name.substring(1)));
     }catch(Exception e){return new WebResourceResponse("text/plain","UTF-8",404,"Not Found",Collections.emptyMap(),new ByteArrayInputStream(new byte[0]));}}
    public boolean shouldOverrideUrlLoading(WebView v,WebResourceRequest r){Uri u=r.getUrl();if("app.murojaah.local".equals(u.getHost()))return false;if("https".equals(u.getScheme()))try{startActivity(new Intent(Intent.ACTION_VIEW,u));}catch(Exception ignored){}return true;}
@@ -76,6 +78,15 @@ public class MainActivity extends Activity {
   if(Build.VERSION.SDK_INT>=30){WindowInsetsController controller=getWindow().getInsetsController();if(controller!=null){if(enabled){controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);controller.hide(WindowInsets.Type.systemBars());}else controller.show(WindowInsets.Type.systemBars());}}
  }
  class Bridge {
+  @JavascriptInterface public boolean copyVerseText(String text){
+   if(text==null||text.isEmpty()||text.length()>4096)return false;
+   try{
+    ClipboardManager clipboard=getSystemService(ClipboardManager.class);
+    if(clipboard==null)return false;
+    clipboard.setPrimaryClip(ClipData.newPlainText("Ayat Al-Qur’an",text));
+    return true;
+   }catch(RuntimeException e){return false;}
+  }
   @JavascriptInterface public void mushafCacheInfo(int page,String edition){
    workers.execute(()->{
     try{emit("mushafCache",MushafCache.info(MainActivity.this,MushafCache.Edition.byId(edition),page));}

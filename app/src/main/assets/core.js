@@ -21,5 +21,9 @@
   return prefix+String(n).padStart(3,'0')+info.extension;
  }
  function pageForVerse(s,a,surahs,pages){validate(s,a,a,surahs);if(pages.length!==604)throw Error('Data halaman belum tersedia.');let low=0,high=pages.length-1,result=0;while(low<=high){const mid=(low+high)>>1,ref=pages[mid];if(ref.surah<s||(ref.surah===s&&ref.ayah<=a)){result=mid;low=mid+1;}else high=mid-1;}return result+1;}
- const api={reciters,validate,parse,audioUrl,defaultMushafEdition,mushafEditions,pageUrl,pageForVerse};if(typeof module==='object'&&module.exports)module.exports=api;else root.MurojaahCore=api;
+ function ayahWithEnding(text,ayah){
+  const digits=String(ayah).replace(/[0-9]/g,digit=>String.fromCharCode(0x0660+Number(digit)));
+  return text+' \u06dd'+digits;
+ }
+ const api={reciters,validate,parse,audioUrl,defaultMushafEdition,mushafEditions,pageUrl,pageForVerse,ayahWithEnding};if(typeof module==='object'&&module.exports)module.exports=api;else root.MurojaahCore=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

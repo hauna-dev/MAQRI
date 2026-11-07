@@ -11,6 +11,7 @@ function switchScreen(value){
   if(mushafFull)setMushafFullscreen(false);
   tilawahReader=false;
   mushafTarget=null;
+  copyRequest++;
   setTilawahControls(true);
   document.body.classList.remove('tilawah-reader');
  }
@@ -135,6 +136,8 @@ let mushafReturnScreen='tilawah';
 let mushafTarget=null;
 let mushafTargetBoxes=[];
 const ayahBounds=new Map();
+let ayahTextRequest=null;
+let copyRequest=0;
 let mushafEdition=core.defaultMushafEdition;
 let standardPages=[],madani1440Pages=[];
 const mushafEditionPreference='mushafEdition-v2';
@@ -332,14 +335,16 @@ function openPlaybackMushaf(state){
   openTilawahPage(target,state.kind==='tafsir'?null:{s,a},returnScreen);
  }catch(e){toast(e.message);}
 }
+async function openCompressedAsset(path){
+ const response=await fetch(path);
+ if(!response.ok)throw Error('Data Mushaf tidak tersedia.');
+ if(native)return response;
+ return new Response(response.body.pipeThrough(new DecompressionStream('gzip')));
+}
 function verseBounds(edition){
  if(edition!=='1440'&&edition!=='1405')return Promise.resolve(null);
  if(!ayahBounds.has(edition)){
-  const request=fetch('ayah-bounds-'+edition+'.json.gz').then(response=>{
-   if(!response.ok)throw Error('Posisi ayat tidak tersedia.');
-   if(native)return response.json();
-   return new Response(response.body.pipeThrough(new DecompressionStream('gzip'))).json();
-  }).catch(()=>{
+  const request=openCompressedAsset('ayah-bounds-'+edition+'.json.gz').then(response=>response.json()).catch(()=>{
    ayahBounds.delete(edition);
    return null;
   });
@@ -347,14 +352,92 @@ function verseBounds(edition){
  }
  return ayahBounds.get(edition);
 }
+function mushafImageLayout(){
+ const image=$('mushafImage');
+ if(image.hidden||!image.naturalWidth||!image.naturalHeight)return null;
+ const scale=Math.min(image.clientWidth/image.naturalWidth,image.clientHeight/image.naturalHeight);
+ if(!(scale>0))return null;
+ return {scale,x:(image.clientWidth-image.naturalWidth*scale)/2,
+  y:(image.clientHeight-image.naturalHeight*scale)/2};
+}
+function versesOnMushafPage(n){
+ const first=pages[n-1];
+ if(!first)return [];
+ const next=pages[n]||{surah:surahs.length+1,ayah:1};
+ const verses=[];
+ for(let s=first.surah;s<=Math.min(next.surah,surahs.length);s++){
+  const start=s===first.surah?first.ayah:1;
+  const end=s===next.surah?next.ayah-1:surahs[s-1].verses_count;
+  for(let a=start;a<=end;a++)verses.push({s,a,key:s+':'+a});
+ }
+ return verses;
+}
+function ayahText(){
+ if(!ayahTextRequest){
+  ayahTextRequest=openCompressedAsset('quran-uthmani.txt.gz').then(response=>response.text()).then(raw=>{
+   const texts=new Map();
+   for(const line of raw.split(/\r?\n/)){
+    const match=line.match(/^(\d+)\|(\d+)\|(.+)$/);
+    if(match)texts.set(match[1]+':'+match[2],match[3]);
+   }
+   if(texts.size!==6236)throw Error('Teks ayat belum tersedia.');
+   return texts;
+  }).catch(error=>{ayahTextRequest=null;throw error;});
+ }
+ return ayahTextRequest;
+}
+async function openCopyVerse(clientX,clientY){
+ const image=$('mushafImage'),layout=mushafImageLayout();
+ const panel=$('copyVersePanel');
+ if(!layout||panel.open)return;
+ const {left,top}=image.getBoundingClientRect();
+ const x=(clientX-left-layout.x)/layout.scale,y=(clientY-top-layout.y)/layout.scale;
+ const n=page,edition=mushafEdition,request=++copyRequest;
+ const verses=versesOnMushafPage(n);
+ if(!verses.length)return;
+ try{
+  const [bounds,texts]=await Promise.all([verseBounds(edition),ayahText()]);
+  if(request!==copyRequest||screen!=='mushaf'||page!==n||mushafEdition!==edition)return;
+  const selected=verses.find(({key})=>{
+   const entry=bounds?.[key];
+   return entry?.[0]===n&&entry.slice(1).some(([l,t,w,h])=>x>=l&&x<l+w&&y>=t&&y<t+h);
+  });
+  const select=$('copyVerseSelect'),preview=$('copyVersePreview');
+  select.replaceChildren(...verses.map(({s,a,key})=>Object.assign(document.createElement('option'),{
+   value:key,textContent:name(s)+' · Ayat '+a
+  })));
+  select.value=selected?.key||verses.find(v=>v.s===mushafTarget?.s&&v.a===mushafTarget?.a)?.key||verses[0].key;
+  const updatePreview=()=>{
+   const text=texts.get(select.value),ayah=Number(select.value.split(':')[1]);
+   preview.textContent=text?core.ayahWithEnding(text,ayah):'';
+   $('copyVerseBtn').disabled=!text;
+  };
+  select.onchange=updatePreview;
+  updatePreview();
+  panel.showModal();
+ }catch(error){
+  if(request===copyRequest&&screen==='mushaf')toast(error.message);
+ }
+}
+async function copySelectedVerse(){
+ const value=$('copyVersePreview').textContent;
+ if(!value)return;
+ try{
+  if(native){
+   if(!native.copyVerseText(value))throw Error('Papan klip tidak tersedia.');
+  }else await navigator.clipboard.writeText(value);
+  $('copyVersePanel').close();
+  toast('Ayat dan nomor disalin.');
+ }catch{toast('Ayat belum dapat disalin. Coba lagi.');}
+}
 function renderMushafTarget(scrollToVerse=false){
  const overlay=$('mushafHighlights');
  overlay.replaceChildren();
  const image=$('mushafImage');
- if(!mushafTarget||!mushafTargetBoxes.length||image.hidden||!image.naturalWidth||!image.naturalHeight)return;
- const scale=Math.min(image.clientWidth/image.naturalWidth,image.clientHeight/image.naturalHeight);
- const left=image.offsetLeft+(image.clientWidth-image.naturalWidth*scale)/2;
- const top=image.offsetTop+(image.clientHeight-image.naturalHeight*scale)/2;
+ if(!mushafTarget||!mushafTargetBoxes.length)return;
+ const layout=mushafImageLayout();
+ if(!layout)return;
+ const {scale}=layout,left=image.offsetLeft+layout.x,top=image.offsetTop+layout.y;
  for(const [x,y,width,height] of mushafTargetBoxes){
   const box=document.createElement('span');
   box.style.left=left+x*scale+'px';
@@ -385,6 +468,7 @@ function loadPage(n,target=null){
  try{url=core.pageUrl(n,edition,persistent);}
  catch(e){toast(e.message);return;}
  page=n;
+ copyRequest++;
  mushafTarget=target;
  mushafTargetBoxes=[];
  $('mushafTargetLabel').hidden=true;
@@ -433,7 +517,8 @@ function toggleTilawahControls(){
  if(tilawahReader&&mushafFull)setTilawahControls(!tilawahControlsVisible);
 }
 function setupMushafGestures(){const viewport=$('mushafViewport');let gesture=null,lastTouch=0;
- const ready=()=>screen==='mushaf'&&zoom===100&&!$('mushafImage').hidden;
+ const pageReady=()=>screen==='mushaf'&&!$('mushafImage').hidden;
+ const ready=()=>pageReady()&&zoom===100;
  const tapAt=x=>{
   const box=viewport.getBoundingClientRect(),fraction=(x-box.left)/box.width;
   if(fraction<0||fraction>1)return;
@@ -445,9 +530,43 @@ function setupMushafGestures(){const viewport=$('mushafViewport');let gesture=nu
   if(!tilawahReader||!mushafFull||zoom>100||$('mushafImage').hidden)return;
   if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleTilawahControls();}
  });
- viewport.addEventListener('touchstart',event=>{lastTouch=Date.now();if(!ready()||event.touches.length!==1){gesture=null;return;}const point=event.touches[0];gesture={x:point.clientX,y:point.clientY,time:Date.now(),maxX:0,maxY:0};},{passive:true});
- viewport.addEventListener('touchmove',event=>{if(!gesture)return;if(!ready()||event.touches.length!==1){gesture=null;return;}const point=event.touches[0],dx=point.clientX-gesture.x,dy=point.clientY-gesture.y;gesture.maxX=Math.max(gesture.maxX,Math.abs(dx));gesture.maxY=Math.max(gesture.maxY,Math.abs(dy));if(Math.abs(dx)>18&&Math.abs(dx)>Math.abs(dy)*1.5&&event.cancelable)event.preventDefault();},{passive:false});
- viewport.addEventListener('touchend',event=>{lastTouch=Date.now();const start=gesture;gesture=null;if(!start||!ready()||event.touches.length||event.changedTouches.length!==1)return;const point=event.changedTouches[0],dx=point.clientX-start.x,dy=point.clientY-start.y,elapsed=Date.now()-start.time;const threshold=Math.max(40,viewport.getBoundingClientRect().width*.14);if(elapsed<1200&&Math.abs(dx)>=threshold&&Math.abs(dy)<Math.abs(dx)*.55&&start.maxY<Math.abs(dx)*.75){turnMushafPage(dx>0?1:-1);return;}if(elapsed<450&&Math.abs(dx)<12&&Math.abs(dy)<12&&start.maxX<12&&start.maxY<12)tapAt(point.clientX);},{passive:true});
+ viewport.addEventListener('touchstart',event=>{
+  lastTouch=Date.now();
+  if(!pageReady()||event.touches.length!==1){gesture=null;return;}
+  const point=event.touches[0];
+  gesture={x:point.clientX,y:point.clientY,time:lastTouch,maxX:0,maxY:0};
+ },{passive:true});
+ viewport.addEventListener('touchmove',event=>{
+  if(!gesture)return;
+  if(!pageReady()||event.touches.length!==1){gesture=null;return;}
+  const point=event.touches[0],dx=point.clientX-gesture.x,dy=point.clientY-gesture.y;
+  gesture.maxX=Math.max(gesture.maxX,Math.abs(dx));
+  gesture.maxY=Math.max(gesture.maxY,Math.abs(dy));
+  if(ready()&&Math.abs(dx)>18&&Math.abs(dx)>Math.abs(dy)*1.5&&event.cancelable)event.preventDefault();
+ },{passive:false});
+ viewport.addEventListener('touchend',event=>{
+  lastTouch=Date.now();
+  const start=gesture;
+  gesture=null;
+  if(!start||!pageReady()||event.touches.length||event.changedTouches.length!==1)return;
+  const point=event.changedTouches[0],dx=point.clientX-start.x,dy=point.clientY-start.y,elapsed=lastTouch-start.time;
+  const still=Math.abs(dx)<12&&Math.abs(dy)<12&&start.maxX<12&&start.maxY<12;
+  if(still&&elapsed>=500){openCopyVerse(point.clientX,point.clientY);return;}
+  if(!ready())return;
+  const threshold=Math.max(40,viewport.getBoundingClientRect().width*.14);
+  if(elapsed<1200&&Math.abs(dx)>=threshold&&Math.abs(dy)<Math.abs(dx)*.55&&start.maxY<Math.abs(dx)*.75){
+   turnMushafPage(dx>0?1:-1);
+  }else if(still&&elapsed<450)tapAt(point.clientX);
+ },{passive:true});
+ viewport.addEventListener('contextmenu',event=>{
+  if(!pageReady())return;
+  event.preventDefault();
+  if(gesture&&(gesture.maxX>=12||gesture.maxY>=12))return;
+  if(!gesture&&Date.now()-lastTouch<800)return;
+  gesture=null;
+  lastTouch=Date.now();
+  openCopyVerse(event.clientX,event.clientY);
+ });
  viewport.addEventListener('touchcancel',()=>{gesture=null;lastTouch=Date.now();},{passive:true});
  viewport.addEventListener('click',event=>{if(ready()&&Date.now()-lastTouch>800&&event.detail===1)tapAt(event.clientX);});
 }
@@ -483,7 +602,7 @@ function renderUpdate(data){
  $('installUpdate').hidden=data.state!=='ready';$('checkUpdate').disabled=['checking','downloading','verifying'].includes(data.state);
 }
 window.onNativeEvent=(type,data)=>{if(type==='mushafCache')renderMushafCache(data);else if(type==='update')renderUpdate(data);else if(type==='playback')renderPlayback(data);else if(type==='error'){toast(data.message);$('downloadBtn').disabled=false;$('downloadProgress').hidden=true;}else if(type==='tafsir')renderTafsir(data);else if(type==='tafsirError'){if(data.id!==tafsirRequest)return;$('tafsirBtn').disabled=false;$('tafsirStatus').hidden=false;$('tafsirStatus').textContent=data.message;updateTafsirNavigation();}else if(type==='library')renderLibrary(data);else if(type==='download'){$('downloadProgress').hidden=false;$('downloadText').textContent=data.finished?'Unduhan selesai': 'Mengunduh '+data.done+' dari '+data.total+' ayat';const percent=Math.round(data.done/data.total*100);$('downloadPercent').textContent=percent+'%';$('downloadBar').value=percent;if(data.finished){$('downloadBtn').disabled=false;toast('Audio tersimpan. Siap didengar tanpa internet.');}}};
-window.handleBack=()=>{if($('recordingPanel').open){setRecordingPanel(false);return true;}if(tilawahReader){switchScreen(mushafReturnScreen);return true;}if(mushafFull){setMushafFullscreen(false);return true;}if(screen!=='audio'){switchScreen('audio');return true;}return false;};
+window.handleBack=()=>{if($('copyVersePanel').open){$('copyVersePanel').close();return true;}if($('recordingPanel').open){setRecordingPanel(false);return true;}if(tilawahReader){switchScreen(mushafReturnScreen);return true;}if(mushafFull){setMushafFullscreen(false);return true;}if(screen!=='audio'){switchScreen('audio');return true;}return false;};
 async function init(){try{
  const loadJson=async path=>{
   const response=await fetch(path);
@@ -533,6 +652,8 @@ async function init(){try{
  $('continueBtn').onclick=()=>{if(lastRange)play({...lastRange});};document.querySelector('.brand').onclick=e=>{e.preventDefault();switchScreen('audio');};
  document.querySelectorAll('[data-screen]').forEach(el=>el.onclick=()=>switchScreen(el.dataset.screen));
  setupMushafGestures();
+ $('copyVerseClose').onclick=()=>$('copyVersePanel').close();
+ $('copyVerseBtn').onclick=copySelectedVerse;
  if(window.ResizeObserver)new ResizeObserver(()=>{
   if(mushafTargetBoxes.length)renderMushafTarget(true);
  }).observe($('mushafImage'));

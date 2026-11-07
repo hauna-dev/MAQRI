@@ -1,3 +1,9 @@
+# MAQRI 1.0.26
+
+- Tekan lama pada ayat Mushaf untuk menyalin teks Arab beserta tanda akhir ayat dan nomor Arab.
+- Madani 1440 H dan 1405 H memilih ayat yang ditekan. Di 1441 H, pilih nomor ayat dari halaman yang sedang terbuka.
+- Teks Arab Utsmani 1.1 dari [Tanzil Project](https://tanzil.net/).
+
 # MAQRI 1.0.25
 
 - Buka mushaf ayat ini langsung membuka halaman ayat dalam layar penuh.
