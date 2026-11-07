@@ -148,3 +148,15 @@ body[data-screen=mushaf] .topbar{padding-top:15px;padding-bottom:15px}#mushafScr
 .tilawah-reader.mushaf-fullscreen .mushaf-viewport { border: 0; border-radius: 0; background: #101537; }
 
 .tilawah-reader.mushaf-fullscreen .mushaf-viewport:has(img[hidden]) { display: none; }
+
+/* The controls float above the page, so showing them never resizes the Mushaf. */
+.tilawah-reader.mushaf-fullscreen .reader-toolbar {
+  position: absolute; inset: 0 0 auto; z-index: 2;
+}
+.tilawah-reader.mushaf-fullscreen #mushafScreen:has(#mushafImage:not([hidden])),
+.tilawah-reader.mushaf-fullscreen .mushaf-viewport { background: #fff; }
+.tilawah-reader.mushaf-fullscreen #pageStatus { margin-top: auto; }
+.tilawah-controls-hidden .reader-toolbar,
+.tilawah-controls-hidden .player,
+.tilawah-controls-hidden #recordingTransport { display: none; }
+.tilawah-controls-hidden.mushaf-fullscreen .mushaf-viewport { margin-bottom: 0; }

@@ -1,3 +1,7 @@
+# MAQRI 1.0.21
+
+- Tilawah langsung terbuka memenuhi layar Android dengan bilah kontrol tersembunyi. Ketuk tengah halaman untuk menampilkan atau menyembunyikan kontrol.
+
 # MAQRI 1.0.20
 
 - Tab Tilawah memuat Mushaf Madinah lengkap 604 halaman dengan daftar 114 surat dan 30 juz.

@@ -13,3 +13,18 @@ start(100);handlers.touchmove({touches:[{clientX:100,clientY:100},{clientX:200,c
 vm.runInContext('zoom=125',context);start(100);end(300);start(20);end(20);assert.equal(turns.length,count,'Zoomed image retains pan/tap');vm.runInContext('zoom=100;page=604',context);start(100);end(300);assert.equal(turns.length,count,'Last page boundary');vm.runInContext('page=1',context);start(300);end(100);assert.equal(turns.length,count,'First page boundary');
 vm.runInContext('page=42',context);now+=1000;handlers.click({clientX:20,detail:1});assert.equal(turns.at(-1),43);el('mushafImage').hidden=true;start(100);end(300);assert.equal(turns.at(-1),43,'No turn while image is loading');
 console.log('Lulus: swipe kanan/kiri, tap tepi, batas halaman, gulir vertikal, long press, multi-touch, zoom/pan, dan pencegahan klik ganda.');
+
+el('mushafImage').hidden=false;
+vm.runInContext("tilawahReader=true;setMushafFullscreen(true)",context);
+const controlsVisible=()=>vm.runInContext('tilawahControlsVisible',context);
+assert.equal(controlsVisible(),false,'Tilawah starts with controls hidden');
+start(200);end(200);
+assert.equal(controlsVisible(),true);
+handlers.click({clientX:200,detail:1});
+assert.equal(controlsVisible(),true,'A synthetic click must not toggle controls twice');
+start(100);end(300);
+assert.equal(turns.at(-1),44);
+assert.equal(controlsVisible(),true,'A swipe does not toggle controls');
+start(200);end(200);
+assert.equal(controlsVisible(),false);
+console.log('Lulus: kontrol Tilawah tampil dengan ketuk tengah tanpa mengganggu swipe.');
