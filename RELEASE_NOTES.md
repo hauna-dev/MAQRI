@@ -1,3 +1,8 @@
+# MAQRI 1.0.20
+
+- Tab Tilawah memuat Mushaf Madinah lengkap 604 halaman dengan daftar 114 surat dan 30 juz.
+- Pilih surat atau juz untuk membaca di layar penuh dan lanjutkan dari halaman terakhir.
+
 # MAQRI 1.0.19
 
 - Lanjutkan Hafalan membuka ayat terakhir dalam rentang Murojaah setelah aplikasi dibuka ulang.

@@ -99,3 +99,52 @@ body[data-screen=mushaf] .topbar{padding-top:15px;padding-bottom:15px}#mushafScr
 .player-links button { flex: 1 0 auto; min-height: 40px; }
 #markVerse[aria-pressed="true"] { color: var(--teal); }
 #markVerse[aria-pressed="true"] svg { fill: currentColor; }
+
+/* Tilawah uses the navy and gold palette of the reading reference. */
+#tilawahScreen {
+  --tilawah-gold: #edbf67;
+  --tilawah-muted: #bec4de;
+  background: #101537;
+  color: #faf7ef;
+  border: 1px solid #30395e;
+  border-radius: 18px;
+  overflow: clip;
+}
+.tilawah-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 18px 14px; }
+.tilawah-heading h1 { margin: 0; font-size: 26px; }
+.tilawah-heading p { margin: 4px 0 0; color: var(--tilawah-muted); font-size: 11px; }
+#tilawahRecordings { background: #1d254c; border-color: #434d73; color: #f5eddb; min-height: 44px; padding: 8px 10px; }
+.tilawah-resume {
+  display: flex; align-items: center; gap: 12px; width: calc(100% - 28px); margin: 0 14px 12px;
+  padding: 11px 12px; text-align: start; background: #1d254c; color: #faf7ef; border: 1px solid #434d73; border-radius: 10px;
+}
+.tilawah-resume svg { width: 19px; height: 19px; color: var(--tilawah-gold); flex-shrink: 0; }
+.tilawah-resume span { flex: 1; }
+.tilawah-resume small, .tilawah-list small { display: block; margin-top: 3px; color: var(--tilawah-muted); font-size: 11px; }
+.tilawah-tabs { position: sticky; top: 0; z-index: 2; display: flex; background: #13193e; border-bottom: 1px solid #333d64; }
+.tilawah-tabs button {
+  flex: 1; min-height: 44px; border: 0; border-bottom: 3px solid transparent;
+  background: transparent; color: var(--tilawah-muted); font-weight: 700;
+}
+.tilawah-tabs button[aria-pressed="true"] { border-color: var(--tilawah-gold); color: var(--tilawah-gold); }
+.tilawah-list { margin: 0; padding: 0; list-style: none; }
+.tilawah-list button {
+  width: 100%; min-height: 56px; display: grid; grid-template-columns: 29px minmax(0, 1fr) auto auto;
+  align-items: center; gap: 8px; padding: 8px 12px; text-align: start;
+  border: 0; border-bottom: 1px solid #30395e; background: transparent; color: inherit;
+}
+.tilawah-list li:last-child button { border-bottom: 0; }
+.tilawah-list strong { font-size: 13px; overflow-wrap: anywhere; }
+.tilawah-number { color: var(--tilawah-gold); font-variant-numeric: tabular-nums; font-size: 12px; }
+.tilawah-arabic { font-size: 17px; line-height: 1.45; text-align: right; max-width: 114px; }
+.tilawah-page { grid-column: 4; white-space: nowrap; }
+#tilawahScreen button:focus-visible { outline: 2px solid var(--tilawah-gold); outline-offset: -3px; }
+#tilawahIndex { display: none; }
+.tilawah-reader #tilawahIndex { display: inline-grid; place-items: center; width: auto; padding-inline: 9px; font-size: 11px; }
+.tilawah-reader.mushaf-fullscreen #mushafScreen { padding: 0; background: #101537; }
+.tilawah-reader.mushaf-fullscreen .reader-toolbar { margin: 0; padding: 4px 8px; background: #101537; color: #faf7ef; }
+.tilawah-reader.mushaf-fullscreen .reader-toolbar button { background: #1d254c; border-color: #434d73; color: #edbf67; }
+.tilawah-reader.mushaf-fullscreen #pageCounter { color: #faf7ef; white-space: nowrap; font-size: 10px; }
+.tilawah-reader.mushaf-fullscreen .mushaf-viewport { border: 0; border-radius: 0; background: #101537; }
+
+.tilawah-reader.mushaf-fullscreen .mushaf-viewport:has(img[hidden]) { display: none; }

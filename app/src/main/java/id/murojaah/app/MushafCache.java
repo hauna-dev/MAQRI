@@ -14,7 +14,7 @@ final class MushafCache {
  static int pageFromPath(String path){if(path==null||!path.matches("/mushaf/[0-9]{3}[.]webp"))throw new IllegalArgumentException("Path halaman tidak valid");int page=Integer.parseInt(path.substring(8,11));filename(page);return page;}
  static String url(int page){return "https://adhan.trinadhthatakula.com/mushaf/madani-hafs-1441-v1/"+filename(page);}
  static boolean valid(File file){if(!file.isFile()||file.length()<32)return false;BitmapFactory.Options options=new BitmapFactory.Options();options.inJustDecodeBounds=true;BitmapFactory.decodeFile(file.getPath(),options);return options.outWidth>0&&options.outHeight>0;}
- static synchronized InputStream open(Context c,int page)throws Exception{
+ static InputStream open(Context c,int page)throws Exception{
   File target=new File(folder(c),filename(page));
   if(valid(target))return new FileInputStream(target);
   byte[] data=Store.fetch(url(page),8000000);
@@ -23,7 +23,7 @@ final class MushafCache {
   Bitmap bitmap=BitmapFactory.decodeByteArray(data,0,data.length);if(bitmap==null)throw new IOException("Gambar tidak lengkap");bitmap.recycle();
   File temp=null;
   try{
-   if(!target.getParentFile().isDirectory()&&!target.getParentFile().mkdirs())throw new IOException("Penyimpanan");
+   if(!target.getParentFile().mkdirs()&&!target.getParentFile().isDirectory())throw new IOException("Penyimpanan");
    temp=File.createTempFile("page-",".tmp",target.getParentFile());
    try(FileOutputStream out=new FileOutputStream(temp)){out.write(data);out.getFD().sync();}
    if(!temp.renameTo(target))throw new IOException("Tidak dapat menyimpan halaman");
@@ -31,7 +31,7 @@ final class MushafCache {
   finally{if(temp!=null)temp.delete();}
   return new ByteArrayInputStream(data);
  }
- static synchronized JSONObject info(Context c,int current)throws Exception{
+ static JSONObject info(Context c,int current)throws Exception{
   JSONArray pages=new JSONArray();long bytes=0;
   for(int page=1;page<=604;page++){File file=new File(folder(c),filename(page));if(valid(file)){pages.put(page);bytes+=file.length();}}
   return new JSONObject().put("page",current).put("saved",current>=1&&current<=604&&valid(new File(folder(c),filename(current)))).put("pages",pages).put("count",pages.length()).put("bytes",bytes);

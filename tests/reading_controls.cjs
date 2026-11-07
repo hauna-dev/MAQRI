@@ -13,3 +13,26 @@ console.log('Lulus: navigasi antar surat, batas Quran, kelompok ayat, ukuran fon
 vm.runInContext("setTafsirMode('listen')",context);assert.equal(el('tafsirReadPane').hidden,true);assert.equal(el('tafsirListenPane').hidden,false);vm.runInContext("setTafsirMode('read')",context);assert.equal(el('tafsirReadPane').hidden,false);assert.equal(el('tafsirListenPane').hidden,true);
 const panel=el('recordingPanel');panel.open=false;panel.showModal=function(){this.open=true;};panel.close=function(){this.open=false;};vm.runInContext('setRecordingPanel(true)',context);assert.equal(panel.open,true);assert.equal(context.window.handleBack(),true);assert.equal(panel.open,false);assert.equal(el('recordingPanelToggle')['aria-expanded'],'false');
 console.log('Lulus: pemisahan Baca/Dengar dan penutupan panel rekaman melalui Back.');
+
+function element(){
+ return {
+  children:[],
+  append(...children){this.children.push(...children);},
+  replaceChildren(...children){this.children=children;},
+  setAttribute(key,value){this[key]=value;}
+ };
+}
+context.document.createElement=element;
+el('tilawahList').replaceChildren=function(...children){this.children=children;};
+context.pageMetadata=require('../app/src/main/assets/pages.json');
+vm.runInContext("pages=pageMetadata;setTilawahMode('surat')",context);
+const tilawahList=el('tilawahList');
+const rowPage=index=>tilawahList.children[index].children[0].children.at(-1).textContent;
+assert.equal(tilawahList.children.length,114);
+assert.equal(rowPage(16),'Hal. 282','Al-Isra opens on the correct Madani page');
+assert.equal(rowPage(113),'Hal. 604');
+vm.runInContext("setTilawahMode('juz')",context);
+assert.equal(tilawahList.children.length,30);
+assert.equal(rowPage(6),'Hal. 121','Juz 7 starts partway through page 121');
+assert.equal(rowPage(29),'Hal. 582');
+console.log('Lulus: indeks 114 surat dan 30 juz, termasuk awal Al-Isra dan Juz 30.');
