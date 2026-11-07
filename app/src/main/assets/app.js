@@ -389,7 +389,11 @@ function setupMushafGestures(){const viewport=$('mushafViewport');let gesture=nu
 }
 function setRecordingPanel(open){const panel=$('recordingPanel');if(open){if(!panel.open)panel.showModal();}else if(panel.open)panel.close();$('recordingPanelToggle').setAttribute('aria-expanded',String(!!open));}
 function setTafsirMode(value){if(!['read','listen'].includes(value))return;$('tafsirReadPane').hidden=value!=='read';$('tafsirListenPane').hidden=value!=='listen';document.querySelectorAll('[data-tafsir-mode]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.tafsirMode===value)));save('tafsirMode',value);if(screen==='tafsir')window.scrollTo({top:0,behavior:'instant'});}
-function applyMushafZoom(){const image=$('mushafImage');$('mushafViewport').classList.toggle('mushaf-zoomed',zoom>100);image.style.width=zoom+'%';image.style.height=mushafFull?zoom+'%':'auto';}
+function applyMushafZoom(){
+ const viewport=$('mushafViewport');
+ viewport.classList.toggle('mushaf-zoomed',zoom>100);
+ viewport.style.setProperty('--mushaf-zoom',zoom+'%');
+}
 function setMushafFullscreen(enabled){mushafFull=!!enabled;setTilawahControls(!mushafFull||!tilawahReader);$('mushafViewport').tabIndex=tilawahReader&&mushafFull?0:-1;document.body.classList.toggle('mushaf-fullscreen',mushafFull);$('mushafFullscreen').setAttribute('aria-pressed',String(mushafFull));$('mushafFullscreen').setAttribute('aria-label',mushafFull?'Keluar dari layar penuh':'Buka Mushaf layar penuh');$('mushafFullscreen').textContent=mushafFull?'×':'⛶';zoom=100;applyMushafZoom();if(native&&native.mushafFullscreen)native.mushafFullscreen(mushafFull);}
 function tafsirRange(){return tafsirActiveRange&&$('tafsirRange').value===tafsirInputValue?tafsirActiveRange:core.parse($('tafsirRange').value,surahs);}
 function updateTafsirNavigation(busy=false){try{const r=tafsirRange();$('tafsirCurrent').textContent=r.s+':'+r.a+(r.b!==r.a?'–'+r.b:'');$('tafsirPrev').disabled=busy||(r.s===1&&r.a===1);$('tafsirNext').disabled=busy||(r.s===114&&r.b===surahs[113].verses_count);}catch{$('tafsirCurrent').textContent='Pilih ayat';$('tafsirPrev').disabled=$('tafsirNext').disabled=true;}}

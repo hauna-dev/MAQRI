@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const elements=new Map(),handlers={},turns=[];let now=10000;
-function el(id){if(!elements.has(id))elements.set(id,{hidden:false,value:'',style:{},classList:{toggle(){},add(){},remove(){}},setAttribute(){},addEventListener(k,v){handlers[k]=v;},getBoundingClientRect:()=>({left:0,width:400})});return elements.get(id);}
+function el(id){if(!elements.has(id))elements.set(id,{hidden:false,value:'',style:{setProperty(key,value){this[key]=value;}},classList:{toggle(){},add(){},remove(){}},setAttribute(){},addEventListener(k,v){handlers[k]=v;},getBoundingClientRect:()=>({left:0,width:400})});return elements.get(id);}
 const context={console,Date:{now:()=>now},setTimeout:()=>0,clearTimeout(){},turns,window:{MurojaahCore:require('../app/src/main/assets/core.js')},document:{getElementById:el,body:{classList:{toggle(){},add(){},remove(){}}}},localStorage:{setItem(){}}};vm.createContext(context);vm.runInContext(fs.readFileSync('app/src/main/assets/app.js','utf8').replace(/init\(\);\s*$/,''),context);vm.runInContext("screen='mushaf';page=42;loadPage=n=>{page=n;turns.push(n);};setupMushafGestures()",context);
 function start(x,y=100){now+=1000;handlers.touchstart({touches:[{clientX:x,clientY:y}]});}
 function end(x,y=100){now+=100;handlers.touchend({touches:[],changedTouches:[{clientX:x,clientY:y}]});}

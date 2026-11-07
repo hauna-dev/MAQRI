@@ -1,3 +1,7 @@
+# MAQRI 1.0.24
+
+- Mushaf layar penuh pada posisi landscape mengikuti lebar layar. Gulir vertikal untuk membaca seluruh halaman dan usap mendatar untuk pindah halaman.
+
 # MAQRI 1.0.23
 
 - Jadikan Madani 1440 H dari Quran Android sebagai edisi utama Tilawah.
