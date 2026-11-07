@@ -72,3 +72,30 @@ body[data-screen=mushaf] .topbar{padding-top:15px;padding-bottom:15px}#mushafScr
 .repeat-options select{font-size:13px}.repeat-help{font-size:10px;line-height:1.8;color:var(--muted);margin:12px 0 0}.options-row>.field{max-width:none}
 
 .mushaf-viewport{touch-action:pan-y pinch-zoom}.mushaf-viewport.mushaf-zoomed{touch-action:auto}.mushaf-viewport img{-webkit-user-drag:none;user-select:none;-webkit-user-select:none}.mushaf-gesture-help{font-size:10px;margin:0 2px 10px}
+
+#continueCard {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+}
+#continueCard #continueBtn {
+  grid-column: 1 / -1;
+  width: 100%;
+  height: auto;
+  border-radius: 13px;
+  min-height: 44px;
+  color: var(--on-accent);
+  justify-content: center;
+  font-weight: 700;
+}
+.review-verses { margin-top: 16px; padding: 16px; }
+.review-verses summary { cursor: pointer; font-weight: 700; }
+.review-verses summary .pill { margin-inline-start: 8px; }
+#playReviewAll { margin-top: 12px; }
+.review-verses ul { list-style: none; margin: 0; padding: 0; }
+.review-verses li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+.review-verses li strong { flex: 1 1 130px; }
+.review-verses li button { min-height: 44px; }
+.player-links { flex-wrap: wrap; }
+.player-links button { flex: 1 0 auto; min-height: 40px; }
+#markVerse[aria-pressed="true"] { color: var(--teal); }
+#markVerse[aria-pressed="true"] svg { fill: currentColor; }

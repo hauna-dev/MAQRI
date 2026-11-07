@@ -11,3 +11,16 @@ reports.length=0;vm.runInContext("playPreview({s:1,a:1,b:2,q:'minshawi',repeat:1
 console.log('Lulus: urutan ulang per ayat dan rentang, replay setelah selesai, skip manual reset hitungan, dan kompatibilitas pengulangan 1 kali.');
 
 vm.runInContext("renderPlayback({status:'playing',surah:1,verse:1,first:1,last:2,ayahRepeat:3,verseRound:2,round:1,repeat:2,qari:'minshawi'})",context);assert.ok(el('playerMeta').textContent.startsWith('Ulang ayat 2/3'));
+
+reports.length=0;
+vm.runInContext("playPreview({s:17,a:10,b:13,verse:12,q:'minshawi',repeat:1})",context);
+assert.equal(reports.at(-1).verse,12);
+vm.runInContext("control('prev')",context);
+assert.equal(reports.at(-1).verse,11,'Resuming preserves the original range');
+
+reports.length=0;
+vm.runInContext("playPreview({kind:'review',queue:[{s:17,a:12},{s:112,a:2}],q:'minshawi',repeat:1,ayahRepeat:2})",context);
+for(let i=0;i<4;i++)audios.at(-1).onended();
+assert.deepEqual(reports.filter(state=>state.status==='loading').map(state=>[state.surah,state.verse]),[[17,12],[17,12],[112,2],[112,2]]);
+assert.equal(reports.at(-1).status,'completed');
+console.log('Lulus: lanjut dari ayat tersimpan, putar antrean lintas surat, dan ulang per ayat dalam antrean.');

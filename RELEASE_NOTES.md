@@ -1,3 +1,8 @@
+# MAQRI 1.0.19
+
+- Lanjutkan Hafalan membuka ayat terakhir dalam rentang Murojaah setelah aplikasi dibuka ulang.
+- Tandai ayat sulit lewat pemutar, lalu putar satu per satu atau berurutan dari daftar Ulangi Nanti.
+
 # MAQRI 1.0.18
 
 - Memperbaiki pilihan surat Murojaah yang kembali ke Al-Fatihah setelah aplikasi dibuka ulang.

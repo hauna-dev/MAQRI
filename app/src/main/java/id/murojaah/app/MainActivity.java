@@ -79,13 +79,33 @@ public class MainActivity extends Activity {
   @JavascriptInterface public void recordingControl(String action){runOnUiThread(()->hafalan.control(action));}
   @JavascriptInterface public void recordingSeek(int ms){runOnUiThread(()->hafalan.seek(ms));}
 
-  @JavascriptInterface public String config(){try{return new JSONObject().put("surahs",Store.surahs).put("pages",Store.pages).put("bundled",Store.bundled(MainActivity.this)).put("theme",getPreferences(MODE_PRIVATE).getString("theme","dark")).put("systemDark",systemDark()).toString();}catch(Exception e){return "{}";}}
+  @JavascriptInterface public String config(){try{return new JSONObject().put("surahs",Store.surahs).put("pages",Store.pages).put("bundled",Store.bundled(MainActivity.this)).put("recitationProgress",new JSONObject(getSharedPreferences("recitation-progress",MODE_PRIVATE).getString("range","{}"))).put("theme",getPreferences(MODE_PRIVATE).getString("theme","dark")).put("systemDark",systemDark()).toString();}catch(Exception e){return "{}";}}
   @JavascriptInterface public void theme(String mode,boolean dark){if(!Arrays.asList("light","dark","system").contains(mode))return;runOnUiThread(()->applyChromeTheme(mode,dark));}
   @JavascriptInterface public void checkUpdates(){AppUpdater.check(MainActivity.this,true);}
   @JavascriptInterface public void updateStatus(){AppUpdater.refresh(MainActivity.this);}
   @JavascriptInterface public void installUpdate(){AppUpdater.install(MainActivity.this);}
   @JavascriptInterface public void play(int s,int a,int b,String q,int repeats){playWithAyahRepeat(s,a,b,q,repeats,1);}
-  @JavascriptInterface public void playWithAyahRepeat(int s,int a,int b,String q,int repeats,int ayahRepeats){runOnUiThread(()->{try{if(hafalan.busy()){message("Hentikan rekaman sebelum memutar murottal.");return;}hafalan.control("stop");Store.validate(s,a,b);Intent intent=new Intent(MainActivity.this,PlaybackService.class).setAction("play").putExtra("surah",s).putExtra("first",a).putExtra("last",b).putExtra("qari",q).putExtra("repeat",repeats).putExtra("ayahRepeat",ayahRepeats);startForegroundService(intent);}catch(Exception e){message(e.getMessage());}});}
+  @JavascriptInterface public void playWithAyahRepeat(int s,int a,int b,String q,int repeats,int ayahRepeats){
+   playFromVerse(s,a,b,a,q,repeats,ayahRepeats);
+  }
+  @JavascriptInterface public void playFromVerse(int s,int a,int b,int verse,String q,int repeats,int ayahRepeats){
+   startRecitation(new Intent(MainActivity.this,PlaybackService.class).setAction("play")
+     .putExtra("surah",s).putExtra("first",a).putExtra("last",b).putExtra("verse",verse)
+     .putExtra("qari",q).putExtra("repeat",repeats).putExtra("ayahRepeat",ayahRepeats));
+  }
+  @JavascriptInterface public void playReview(String queue,String q,int ayahRepeats){
+   startRecitation(new Intent(MainActivity.this,PlaybackService.class).setAction("review")
+     .putExtra("queue",queue).putExtra("qari",q).putExtra("ayahRepeat",ayahRepeats));
+  }
+  private void startRecitation(Intent intent){
+   runOnUiThread(()->{
+    try{
+     if(hafalan.busy()){message("Hentikan rekaman sebelum memutar murottal.");return;}
+     hafalan.control("stop");
+     startForegroundService(intent);
+    }catch(Exception e){message(e.getMessage());}
+   });
+  }
   @JavascriptInterface public void control(String action){if(!Arrays.asList("toggle","next","prev","stop").contains(action))return;runOnUiThread(()->{if("toggle".equals(action)){if(hafalan.busy())return;hafalan.control("pause");}if(PlaybackService.instance!=null)startService(new Intent(MainActivity.this,PlaybackService.class).setAction(action));});}
   @JavascriptInterface public void seek(int position){runOnUiThread(()->{PlaybackService s=PlaybackService.instance;if(s!=null&&s.ready&&s.player!=null)s.player.seekTo(Math.max(0,Math.min(position,s.player.getDuration())));});}
   @JavascriptInterface public void download(int s,int a,int b,String q){

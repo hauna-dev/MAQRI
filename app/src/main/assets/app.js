@@ -12,19 +12,189 @@ function updateSurah(reset=true){const s=Number($('surah').value),count=surahs[s
 function saveMurojaahSelection(){const s=Number($('surah').value);if(!Number.isInteger(s)||s<1||s>surahs.length)return;const previous=readSaved('murojaahSelection',null);let range;try{range=rangeFromForm();}catch{range=previous&&previous.s===s?previous:{s,a:1,b:Math.min(7,surahs[s-1].verses_count)};}save('murojaahSelection',{s,a:range.a,b:range.b,q:$('qari').value,repeat:Number($('repeat').value)||1,ayahRepeat:Number($('ayahRepeat').value)||1});}
 function applyMurojaahSelection(range){core.validate(range.s,range.a,range.b,surahs);$('surah').value=String(range.s);updateSurah(false);$('from').value=range.a;$('to').value=range.b;if(range.q&&Array.from($('qari').options||[]).some(option=>option.value===range.q))$('qari').value=range.q;for(const key of ['repeat','ayahRepeat'])if(range[key]&&Array.from($(key).options||[]).some(option=>option.value===String(range[key])))$(key).value=String(range[key]);}
 function restoreMurojaahSelection(){const saved=readSaved('murojaahSelection',null)||lastRange;if(saved){try{applyMurojaahSelection(saved);saveMurojaahSelection();}catch{updateSurah(false);}}}
-function remember(range){lastRange=range;save('lastRange',range);$('continueCard').hidden=false;$('continueTitle').textContent=name(range.s);$('continueMeta').textContent='Ayat '+range.a+'–'+range.b+' · '+(core.reciters[range.q]?.name||'Audio');}
-function play(range){range.q=range.q||$('qari').value;range.repeat=Number(range.repeat||$('repeat').value);range.ayahRepeat=Math.max(1,Math.min(99,Math.floor(Number(range.ayahRepeat||$('ayahRepeat').value)||1)));save('ayahRepeat',range.ayahRepeat);applyMurojaahSelection(range);saveMurojaahSelection();remember(range);if(window.Hafalan&&!window.Hafalan.beforeReciter())return;if(native){if(native.playWithAyahRepeat)native.playWithAyahRepeat(range.s,range.a,range.b,range.q,range.repeat,range.ayahRepeat);else native.play(range.s,range.a,range.b,range.q,range.repeat);}else playPreview(range);}
+let reviewVerses=[];
+function remember(range){
+ const verse=Number(range.verse);
+ range.verse=Number.isInteger(verse)&&verse>=range.a&&verse<=range.b?verse:Number(range.a);
+ lastRange=range;
+ if(!native)save('lastRange',range);
+ $('continueCard').hidden=false;
+ $('continueTitle').textContent=name(range.s)+' · Ayat '+range.verse;
+ $('continueMeta').textContent='Rentang '+range.a+'–'+range.b+' · '+(core.reciters[range.q]?.name||'Audio');
+}
+function restoreRecitation(progress){
+ for(const range of [progress,readSaved('lastRange',null)]){
+  if(!range)continue;
+  try{
+   core.validate(range.s,range.a,range.b,surahs);
+   remember(range);
+   return;
+  }catch{}
+ }
+}
+function trackRecitation(state){
+ if(state.kind!=='recitation'||!surahs.length||state.status==='idle')return;
+ const range={s:state.surah,a:state.first,b:state.last,verse:state.verse,q:state.qari,repeat:state.repeat,ayahRepeat:state.ayahRepeat};
+ if(lastRange&&Object.keys(range).every(key=>range[key]===lastRange[key]))return;
+ remember(range);
+}
+function play(range){
+ if(window.Hafalan&&!window.Hafalan.beforeReciter())return;
+ const {s,a,b}=core.validate(range.s,range.a,range.b,surahs);
+ range={...range,s,a,b,q:range.q||$('qari').value,repeat:Number(range.repeat||$('repeat').value),
+  ayahRepeat:Math.max(1,Math.min(99,Math.floor(Number(range.ayahRepeat||$('ayahRepeat').value)||1)))};
+ save('ayahRepeat',range.ayahRepeat);
+ applyMurojaahSelection(range);
+ saveMurojaahSelection();
+ remember(range);
+ if(native)native.playFromVerse(s,a,b,range.verse,range.q,range.repeat,range.ayahRepeat);
+ else playPreview(range);
+}
+function verseIsMarked(s,a){
+ return reviewVerses.some(verse=>verse.s===s&&verse.a===a);
+}
+function updateReviewMark(){
+ const button=$('markVerse');
+ button.hidden=lastState.kind==='tafsir'||!lastState.verse;
+ const marked=verseIsMarked(lastState.surah,lastState.verse);
+ button.setAttribute('aria-pressed',String(marked));
+ button.lastChild.textContent=marked?'Ayat ditandai':'Ulangi Nanti';
+}
+function changeReviewMark(s,a){
+ if(verseIsMarked(s,a)){
+  reviewVerses=reviewVerses.filter(verse=>verse.s!==s||verse.a!==a);
+  toast('Ayat dihapus dari Ulangi Nanti.');
+ }else{
+  reviewVerses.push(core.validate(s,a,a,surahs));
+  toast('Ayat disimpan ke Ulangi Nanti.');
+ }
+ save('reviewVerses',reviewVerses);
+ renderReviewList();
+ updateReviewMark();
+}
+function restoreReviewList(){
+ const saved=readSaved('reviewVerses',[]);
+ if(Array.isArray(saved)){
+  for(const item of saved){
+   try{
+    const {s,a}=core.validate(item.s,item.a,item.a,surahs);
+    if(!verseIsMarked(s,a))reviewVerses.push({s,a});
+   }catch{}
+  }
+ }
+ renderReviewList();
+}
+function playReview(verses){
+ if(!verses.length||(window.Hafalan&&!window.Hafalan.beforeReciter()))return;
+ const queue=verses.map(({s,a})=>({s,a}));
+ const q=$('qari').value,ayahRepeat=Number($('ayahRepeat').value)||1;
+ if(native)native.playReview(JSON.stringify(queue),q,ayahRepeat);
+ else playPreview({kind:'review',queue,q,repeat:1,ayahRepeat});
+}
+function renderReviewList(){
+ $('reviewCount').textContent=reviewVerses.length+' ayat';
+ $('reviewEmpty').hidden=reviewVerses.length>0;
+ $('playReviewAll').hidden=!reviewVerses.length;
+ const list=$('reviewList');
+ list.replaceChildren();
+ for(const verse of reviewVerses){
+  const row=document.createElement('li');
+  const title=document.createElement('strong');
+  const label=name(verse.s)+' · Ayat '+verse.a;
+  title.textContent=label;
+  const playButton=document.createElement('button');
+  playButton.type='button';
+  playButton.className='secondary';
+  playButton.textContent='Putar';
+  playButton.setAttribute('aria-label','Putar '+label);
+  playButton.onclick=()=>playReview([verse]);
+  const removeButton=document.createElement('button');
+  removeButton.type='button';
+  removeButton.className='secondary';
+  removeButton.textContent='Hapus';
+  removeButton.setAttribute('aria-label','Hapus '+label+' dari Ulangi Nanti');
+  removeButton.onclick=()=>changeReviewMark(verse.s,verse.a);
+  row.append(title,playButton,removeButton);
+  list.append(row);
+ }
+}
 function playTafsir(s){if(!Number.isInteger(s)||s<1||s>114){toast('Pilih surat yang valid.');return;}if(window.Hafalan&&!window.Hafalan.beforeReciter())return;save('tafsirAudioSurah',s);if(native)native.playTafsir(s);else playPreview({s,a:1,b:1,q:'tafsir-saadi',repeat:1,kind:'tafsir'});}
-function playPreview(range){if(previewPlayer)previewPlayer.audio.pause();const audio=new Audio();const state={...range,verse:range.a,round:1,verseRound:1,status:'loading',position:0,duration:0};previewPlayer={audio,state};
+function playPreview(range){
+ if(previewPlayer)previewPlayer.audio.pause();
+ const audio=new Audio();
+ const state={...range,verse:range.verse||range.a,round:1,verseRound:1,status:'loading',reviewIndex:0};
+ function selectReviewVerse(index){
+  const {s,a}=range.queue[index];
+  Object.assign(state,{reviewIndex:index,s,a,b:a,verse:a,verseRound:1});
+ }
+ if(range.queue)selectReviewVerse(0);
+ previewPlayer={audio,state,selectReviewVerse};
  const current=()=>previewPlayer?.audio===audio;
- const report=()=>{if(current())window.onNativeEvent('playback',{kind:range.kind||'recitation',status:state.status,surah:range.s,verse:state.verse,first:range.a,last:range.b,qari:range.q,round:state.round,repeat:range.repeat,verseRound:state.verseRound,ayahRepeat:range.ayahRepeat||1,position:audio.currentTime*1000||0,duration:audio.duration*1000||0});};
- const load=()=>{if(!current())return;state.status='loading';report();audio.src=range.kind==='tafsir'?tafsirTracks[range.s-1].url:core.audioUrl(range.q,range.s,state.verse);audio.play().catch(()=>{if(!current())return;state.status='error';report();toast('Audio belum dapat diputar. Periksa koneksi.');});};
- audio.onplaying=()=>{state.status='playing';report();};audio.onpause=()=>{if(state.status!=='completed'){state.status='paused';report();}};audio.ontimeupdate=report;audio.onloadedmetadata=report;audio.onerror=()=>{if(!current())return;state.status='error';report();toast('Audio online belum tersedia. Coba lagi.');};audio.onended=()=>{if(!current())return;if(state.verseRound<(range.ayahRepeat||1)){state.verseRound++;load();}else if(state.verse<range.b){state.verse++;state.verseRound=1;load();}else if(state.round<range.repeat){state.round++;state.verse=range.a;state.verseRound=1;load();}else{state.status='completed';report();}};previewPlayer.load=load;load();}
-function control(action){if(action==='toggle'&&window.Hafalan&&!window.Hafalan.beforeReciter())return;if(native){native.control(action);return;}if(!previewPlayer)return;const {audio,state,load}=previewPlayer;if(action==='stop'){audio.pause();previewPlayer=null;window.onNativeEvent('playback',{status:'idle'});}else if(action==='toggle'){if(state.status==='completed'){state.verse=state.a;state.round=1;state.verseRound=1;load();}else if(audio.paused)audio.play().catch(()=>toast('Tidak dapat memutar audio.'));else audio.pause();}else{const delta=action==='next'?1:-1;if(state.kind==='tafsir'){playTafsir(state.s+delta);return;}if(state.verse+delta>=state.a&&state.verse+delta<=state.b){state.verse+=delta;state.verseRound=1;load();}}}
+ const report=()=>{
+  if(!current())return;
+  window.onNativeEvent('playback',{kind:range.kind||'recitation',status:state.status,surah:state.s,
+   verse:state.verse,first:state.a,last:state.b,qari:range.q,round:state.round,repeat:range.repeat,
+   verseRound:state.verseRound,ayahRepeat:range.ayahRepeat||1,reviewIndex:state.reviewIndex,
+   reviewCount:range.queue?.length,position:audio.currentTime*1000||0,duration:audio.duration*1000||0});
+ };
+ const load=()=>{
+  if(!current())return;
+  state.status='loading';
+  report();
+  audio.src=range.kind==='tafsir'?tafsirTracks[state.s-1].url:core.audioUrl(range.q,state.s,state.verse);
+  audio.play().catch(()=>{if(current()){state.status='error';report();toast('Audio belum dapat diputar. Periksa koneksi.');}});
+ };
+ audio.onplaying=()=>{state.status='playing';report();};
+ audio.onpause=()=>{if(state.status!=='completed'){state.status='paused';report();}};
+ audio.ontimeupdate=audio.onloadedmetadata=report;
+ audio.onerror=()=>{if(current()){state.status='error';report();toast('Audio online belum tersedia. Coba lagi.');}};
+ audio.onended=()=>{
+  if(!current())return;
+  if(state.verseRound<(range.ayahRepeat||1))state.verseRound++;
+  else if(range.queue&&state.reviewIndex+1<range.queue.length)selectReviewVerse(state.reviewIndex+1);
+  else if(state.verse<state.b){state.verse++;state.verseRound=1;}
+  else if(state.round<range.repeat){state.round++;state.verse=state.a;state.verseRound=1;}
+  else{state.status='completed';report();return;}
+  load();
+ };
+ previewPlayer.load=load;
+ load();
+}
+function control(action){
+ if(action==='toggle'&&window.Hafalan&&!window.Hafalan.beforeReciter())return;
+ if(native){native.control(action);return;}
+ if(!previewPlayer)return;
+ const {audio,state,load,selectReviewVerse}=previewPlayer;
+ if(action==='stop'){
+  previewPlayer=null;
+  audio.pause();
+  window.onNativeEvent('playback',{status:'idle'});
+ }else if(action==='toggle'){
+  if(state.status==='completed'){
+   if(state.queue)selectReviewVerse(0);
+   else{state.verse=state.a;state.round=1;state.verseRound=1;}
+   load();
+  }else if(audio.paused)audio.play().catch(()=>toast('Tidak dapat memutar audio.'));
+  else audio.pause();
+ }else{
+  const delta=action==='next'?1:-1;
+  if(state.kind==='tafsir'){playTafsir(state.s+delta);return;}
+  if(state.queue){
+   const index=state.reviewIndex+delta;
+   if(index>=0&&index<state.queue.length){selectReviewVerse(index);load();}
+  }else if(state.verse+delta>=state.a&&state.verse+delta<=state.b){
+   state.verse+=delta;
+   state.verseRound=1;
+   load();
+  }
+ }
+}
 function seconds(ms){const n=Math.floor((ms||0)/1000);return n>=3600?Math.floor(n/3600)+':'+String(Math.floor(n/60)%60).padStart(2,'0')+':'+String(n%60).padStart(2,'0'):Math.floor(n/60)+':'+String(n%60).padStart(2,'0');}
 function renderPlayback(state){if(!state.status)return;lastState=state;const visible=state.status!=='idle';$('player').hidden=!visible;document.body.classList.toggle('has-player',visible);if(!visible)return;
- const isTafsir=state.kind==='tafsir';$('playerTitle').textContent=isTafsir?'Tafsir As-Sa’di · '+name(state.surah):name(state.surah)+' · Ayat '+state.verse;$('playerMeta').textContent=state.status==='loading'?'Menyiapkan audio…':state.status==='completed'?(isTafsir?'Audio tafsir selesai':'Selesai · Semoga hafalan semakin kuat'):state.status==='error'?'Belum dapat memutar audio':isTafsir?'Abdulrahman Al-Subhan · Way2Quran':(state.ayahRepeat>1?'Ulang ayat '+state.verseRound+'/'+state.ayahRepeat+' · ':'')+'Rentang '+state.round+'/'+state.repeat+' · '+(core.reciters[state.qari]?.name||'Audio');
- $('toggleIcon').setAttribute('href',state.status==='playing'?'#i-pause':'#i-play');$('seek').max=Math.max(1,state.duration||1);$('seek').value=state.position||0;$('positionLabel').textContent=seconds(state.position);$('durationLabel').textContent=seconds(state.duration);$('playerPrev').disabled=isTafsir?state.surah<=1:state.verse<=state.first;$('playerNext').disabled=isTafsir?state.surah>=114:state.verse>=state.last;$('playerTafsir').hidden=isTafsir;$('playerMushaf').lastChild.textContent=isTafsir?'Buka mushaf surat ini':'Buka mushaf ayat ini';$('playerPrev').setAttribute('aria-label',isTafsir?'Surat sebelumnya':'Ayat sebelumnya');$('playerNext').setAttribute('aria-label',isTafsir?'Surat berikutnya':'Ayat berikutnya');if(state.error&&state.error!==renderPlayback.error){renderPlayback.error=state.error;toast(state.error);}if(state.status!=='error')renderPlayback.error='';}
+ trackRecitation(state);
+ updateReviewMark();
+ const isTafsir=state.kind==='tafsir',isReview=state.kind==='review';$('playerTitle').textContent=isTafsir?'Tafsir As-Sa’di · '+name(state.surah):name(state.surah)+' · Ayat '+state.verse;$('playerMeta').textContent=state.status==='loading'?'Menyiapkan audio…':state.status==='completed'?(isTafsir?'Audio tafsir selesai':'Selesai · Semoga hafalan semakin kuat'):state.status==='error'?'Belum dapat memutar audio':isTafsir?'Abdulrahman Al-Subhan · Way2Quran':(state.ayahRepeat>1?'Ulang ayat '+state.verseRound+'/'+state.ayahRepeat+' · ':'')+(isReview?'Ulangi Nanti '+(state.reviewIndex+1)+'/'+state.reviewCount:'Rentang '+state.round+'/'+state.repeat)+' · '+(core.reciters[state.qari]?.name||'Audio');
+ $('toggleIcon').setAttribute('href',state.status==='playing'?'#i-pause':'#i-play');$('seek').max=Math.max(1,state.duration||1);$('seek').value=state.position||0;$('positionLabel').textContent=seconds(state.position);$('durationLabel').textContent=seconds(state.duration);$('playerPrev').disabled=isTafsir?state.surah<=1:isReview?state.reviewIndex<=0:state.verse<=state.first;$('playerNext').disabled=isTafsir?state.surah>=114:isReview?state.reviewIndex>=state.reviewCount-1:state.verse>=state.last;$('playerTafsir').hidden=isTafsir;$('playerMushaf').lastChild.textContent=isTafsir?'Buka mushaf surat ini':'Buka mushaf ayat ini';$('playerPrev').setAttribute('aria-label',isTafsir?'Surat sebelumnya':'Ayat sebelumnya');$('playerNext').setAttribute('aria-label',isTafsir?'Surat berikutnya':'Ayat berikutnya');if(state.error&&state.error!==renderPlayback.error){renderPlayback.error=state.error;toast(state.error);}if(state.status!=='error')renderPlayback.error='';}
 function loadPage(n){try{core.pageUrl(n);}catch(e){toast(e.message);return;}page=n;save('mushafPage',n);$('pageInput').value=n;$('pageCounter').textContent='Halaman '+n+' / 604';$('prevPage').disabled=n===1;$('nextPage').disabled=n===604;$('pageStatus').hidden=false;$('pageStatus').textContent='Memuat halaman '+n+'…';$('mushafImage').hidden=true;$('retryPage').hidden=true;const persistent=!!(native&&native.mushafCacheInfo);const url=persistent?'https://app.murojaah.local/mushaf/'+String(n).padStart(3,'0')+'.webp?v='+Date.now():core.pageUrl(n);$('mushafOfflineStatus').textContent=persistent?'Membuka halaman tersimpan atau mengunduh halaman…':'Penyimpanan mushaf offline tersedia di aplikasi Android.';$('mushafImage').onload=()=>{$('pageStatus').hidden=true;$('mushafImage').hidden=false;$('mushafViewport').scrollTop=0;$('mushafViewport').scrollLeft=0;if(persistent)native.mushafCacheInfo(n);};$('mushafImage').onerror=()=>{$('pageStatus').textContent='Halaman ini belum tersedia offline atau belum dapat dimuat. Sambungkan internet lalu coba lagi.';$('mushafOfflineStatus').textContent='Halaman belum berhasil dibuka.';$('retryPage').hidden=false;};$('mushafImage').src=url;}
 function turnMushafPage(delta){if(screen!=='mushaf'||zoom>100||$('mushafImage').hidden)return;const target=page+delta;if(target<1||target>604){toast(target<1?'Ini halaman pertama mushaf.':'Ini halaman terakhir mushaf.');return;}loadPage(target);}
 function setupMushafGestures(){const viewport=$('mushafViewport');let gesture=null,lastTouch=0;
@@ -78,7 +248,11 @@ async function init(){try{
  $('themeToggle').onclick=()=>window.MaqriTheme.set(window.MaqriTheme.dark?'light':'dark');
  document.querySelectorAll('[data-theme-choice]').forEach(button=>button.onclick=()=>window.MaqriTheme.set(button.dataset.themeChoice));
  window.addEventListener('maqriThemeChange',updateTheme);updateTheme();
- lastRange=readSaved('lastRange',null);if(lastRange){try{core.validate(lastRange.s,lastRange.a,lastRange.b,surahs);remember(lastRange);}catch{lastRange=null;}}
+ restoreRecitation(config.recitationProgress);
+ restoreReviewList();
+ $('playReviewAll').onclick=()=>playReview(reviewVerses);
+ $('markVerse').onclick=()=>changeReviewMark(lastState.surah,lastState.verse);
+ updateReviewMark();
  page=Number(readSaved('mushafPage',1));if(page<1||page>604)page=1;
  $('audioForm').onsubmit=e=>{e.preventDefault();try{play(rangeFromForm());}catch(err){toast(err.message);}};
  $('ayahRepeat').value=String(Math.max(1,Math.min(99,Number(readSaved('ayahRepeat',1))||1)));$('ayahRepeat').onchange=()=>{save('ayahRepeat',Number($('ayahRepeat').value));saveMurojaahSelection();};restoreMurojaahSelection();
